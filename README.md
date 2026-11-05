@@ -39,11 +39,19 @@ sudo apt install pkg-config cmake g++ libclang-dev libasound2-dev libsdl2-dev
 
 SDL is bundled with the build, so the system SDL headers are optional. A C++ compiler is required for the bundled SDL and for the local speech model. On Linux, global hotkeys use X11.
 
-Windows: Visual Studio Build Tools (MSVC), CMake, and LLVM so `libclang` is on the path. The local speech model and the bundled SDL both compile from C or C++.
+Windows, in PowerShell, from a copy of the folder on the Windows drive (a build made inside WSL cannot type into IL-2):
 
-```bash
-cargo run --release
+1. Rust from [rustup.rs](https://rustup.rs), the default MSVC toolchain.
+2. Visual Studio Build Tools, with the “Desktop development with C++” workload. The generator `Visual Studio 17 2022` in a failed build means this part is already present.
+3. CMake from [cmake.org/download](https://cmake.org/download/). In the installer, choose **Add CMake to the system PATH**. Close PowerShell and open it again, then `cmake --version` must print a version. `sdl2-sys` fails with `is cmake not installed?` when this step was skipped. Visual Studio’s own CMake does not count unless that `bin` folder is on PATH.
+4. LLVM from [the LLVM releases](https://github.com/llvm/llvm-project/releases), added to PATH, so the local speech model can find `libclang`. The bundled SDL library and that model both compile from C or C++.
+
+```powershell
+cd C:\src\Callsign
+cargo build --release
 ```
+
+The program is `target\release\callsign.exe`. On Linux, from the project folder, `cargo run --release` does the same job.
 
 The first release build compiles the local speech engine and takes a while. To skip that and use only a speech server:
 

@@ -1,0 +1,695 @@
+//! Window state: the gesture, the workers, and the saved settings.
+
+use std::collections::VecDeque;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
+
+use crate::audio::AudioEngine;
+use crate::bus::WorkerEvent;
+use crate::config::{self, Command, Config, JoyBind, Mode, SttEngine};
+use crate::cues::{CueKind, CuePlayer};
+use crate::hotkey::HotkeyHub;
+use crate::inject::InjectRequest;
+use crate::keys;
+use crate::phase::{self, Effect, Phase};
+use crate::plan::{self, PlanInput};
+use crate::presets::merge_starter;
+use crate::resample;
+use crate::sticks::StickHub;
+use crate::stt::{self, SttCommand};
+use crate::theme;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Page {
+    Operate,
+    Chat,
+    Commands,
+    Setup,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum LogKind {
+    System,
+    Sent,
+    Cancel,
+    Problem,
+    Heard,
+}
+
+pub(crate) struct LogEntry {
+    pub time: String,
+    pub kind: LogKind,
+    pub message: String,
+}
+
+pub(crate) struct DownloadView {
+    pub label: String,
+    pub bytes: u64,
+    pub total: Option<u64>,
+}
+
+pub struct CallsignApp {
+    pub(crate) config: Config,
+    pub(crate) phase: Phase,
+    pub(crate) page: Page,
+    pub(crate) events: VecDeque<LogEntry>,
+    pub(crate) last_headline: String,
+    pub(crate) last_detail: String,
+    pub(crate) try_line: String,
+    pub(crate) command_test: String,
+    pub(crate) import_path: String,
+    pub(crate) listen_joy: bool,
+    pub(crate) download: Option<DownloadView>,
+    pub(crate) mic_names: Vec<String>,
+    pub(crate) save_error: Option<String>,
+    pub(crate) audio: AudioEngine,
+    pub(crate) cues: CuePlayer,
+    pub(crate) sticks: StickHub,
+    pub(crate) hotkeys: HotkeyHub,
+    epoch: Arc<AtomicU64>,
+    utterance: u64,
+    started: Instant,
+    last_press_ms: u64,
+    capture_started: Option<Instant>,
+    applied_ptt: String,
+    applied_audio: Option<String>,
+    edit_snapshot: String,
+    dirty: bool,
+    last_edit: Instant,
+    paint_while_hidden: bool,
+    event_tx: Sender<WorkerEvent>,
+    event_rx: Receiver<WorkerEvent>,
+    stt_tx: Sender<SttCommand>,
+    inject_tx: Sender<InjectRequest>,
+}
+
+impl CallsignApp {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        theme::install(&cc.egui_ctx);
+        let (config, warning) = Config::load();
+        let epoch = Arc::new(AtomicU64::new(1));
+        let (event_tx, event_rx) = mpsc::channel();
+        let (stt_tx, stt_rx) = mpsc::channel();
+        let (inject_tx, inject_rx) = mpsc::channel();
+        {
+            let tx = event_tx.clone();
+            thread::spawn(move || stt::worker(stt_rx, tx));
+        }
+        {
+            let tx = event_tx.clone();
+            let epoch = epoch.clone();
+            thread::spawn(move || crate::inject::worker(inject_rx, tx, epoch));
+        }
+
+        let mut audio = AudioEngine::new();
+        audio.open(config.audio_device.as_deref());
+        let mut hotkeys = HotkeyHub::new();
+        hotkeys.set_binding(keys::parse_ptt(&config.ptt));
+        let applied_ptt = config.ptt.clone();
+        let applied_audio = config.audio_device.clone();
+        let mic_names = crate::audio::list_inputs();
+        let edit_snapshot = serde_json::to_string(&config).unwrap_or_default();
+        let mut app = Self {
+            config,
+            phase: Phase::Idle,
+            page: Page::Operate,
+            events: VecDeque::new(),
+            last_headline: "Nothing said yet".into(),
+            last_detail: "A transcript lands here.".into(),
+            try_line: String::new(),
+            command_test: String::new(),
+            import_path: String::new(),
+            listen_joy: false,
+            download: None,
+            mic_names,
+            save_error: None,
+            audio,
+            cues: CuePlayer::new(),
+            sticks: StickHub::new(),
+            hotkeys,
+            epoch,
+            utterance: 0,
+            started: Instant::now(),
+            last_press_ms: 0,
+            capture_started: None,
+            applied_ptt,
+            applied_audio,
+            edit_snapshot,
+            dirty: false,
+            last_edit: Instant::now(),
+            paint_while_hidden: false,
+            event_tx,
+            event_rx,
+            stt_tx,
+            inject_tx,
+        };
+        if let Some(warning) = warning {
+            app.push_log(LogKind::Problem, warning);
+        }
+        let mode_line = if app.config.send_keys {
+            "Key output is on. Callsign will type into a window titled IL-2.".into()
+        } else {
+            "Practice mode. Nothing is typed into IL-2 until key output is turned on.".into()
+        };
+        app.push_log(LogKind::System, mode_line);
+        if app.config.stt.engine == SttEngine::Local
+            && !stt::model_is_ready(&app.config.resolved_model_path())
+        {
+            app.push_log(
+                LogKind::System,
+                "The local speech model isn't downloaded yet. Typed lines still work.".into(),
+            );
+        }
+        app
+    }
+
+    fn now_ms(&self) -> u64 {
+        self.started.elapsed().as_millis() as u64
+    }
+
+    pub(crate) fn on_ptt(&mut self) {
+        let now = self.now_ms();
+        if now.saturating_sub(self.last_press_ms) < 45 {
+            return;
+        }
+        self.last_press_ms = now;
+        let (phase, effect) = phase::on_press(self.phase, now, self.config.double_tap_ms);
+        self.phase = phase;
+        self.apply(effect);
+    }
+
+    pub(crate) fn force_send(&mut self) {
+        if phase::is_capturing(self.phase) {
+            self.begin_transcribe();
+        }
+    }
+
+    pub(crate) fn cancel_gesture(&mut self) {
+        let effect = match self.phase {
+            Phase::Idle | Phase::Dispatching => return,
+            Phase::Transcribing => Effect::CancelInFlight,
+            _ => Effect::DiscardCapture,
+        };
+        self.phase = Phase::Idle;
+        self.apply(effect);
+    }
+
+    pub(crate) fn run_try_line(&mut self) {
+        if self.phase != Phase::Idle {
+            return;
+        }
+        let line = self.try_line.clone();
+        if line.trim().is_empty() {
+            return;
+        }
+        self.dispatch_text(&line, None, false);
+    }
+
+    pub(crate) fn radio_check(&mut self) {
+        if self.phase != Phase::Idle {
+            return;
+        }
+        self.try_line = "radio check".into();
+        self.dispatch_text("radio check", Some(Mode::Chat), false);
+    }
+
+    pub(crate) fn run_command_test(&mut self) {
+        if self.phase != Phase::Idle {
+            return;
+        }
+        let line = self.command_test.clone();
+        if line.trim().is_empty() {
+            return;
+        }
+        self.dispatch_text(&line, Some(Mode::Command), false);
+    }
+
+    pub(crate) fn add_command(&mut self) {
+        let id = self.config.alloc_id();
+        self.config.commands.push(Command {
+            id,
+            name: "New command".into(),
+            group: "Flight".into(),
+            phrases: vec!["phrase".into()],
+            sequence: String::new(),
+            enabled: false,
+        });
+    }
+
+    pub(crate) fn add_starter(&mut self) {
+        let added = merge_starter(&mut self.config.commands, &mut self.config.next_id);
+        self.push_log(
+            LogKind::System,
+            if added == 0 {
+                "Starter commands are already in the list.".into()
+            } else {
+                format!("Added {added} starter commands.")
+            },
+        );
+    }
+
+    pub(crate) fn export_commands(&mut self) {
+        match config::export_commands(&self.config.commands) {
+            Ok(path) => self.push_log(
+                LogKind::System,
+                format!("Exported commands to {}.", path.display()),
+            ),
+            Err(err) => self.push_log(LogKind::Problem, err),
+        }
+    }
+
+    pub(crate) fn import_commands(&mut self) {
+        let path = self.import_path.trim().to_string();
+        if path.is_empty() {
+            self.push_log(LogKind::Problem, "Type a path to a command file.".into());
+            return;
+        }
+        match config::import_commands(std::path::Path::new(&path)) {
+            Ok(incoming) => {
+                let mut replaced = 0;
+                let mut added = 0;
+                for command in incoming {
+                    if let Some(existing) = self
+                        .config
+                        .commands
+                        .iter_mut()
+                        .find(|current| current.name == command.name)
+                    {
+                        existing.group = command.group;
+                        existing.phrases = command.phrases;
+                        existing.sequence = command.sequence;
+                        existing.enabled = command.enabled;
+                        replaced += 1;
+                    } else {
+                        let mut command = command;
+                        command.id = self.config.alloc_id();
+                        self.config.commands.push(command);
+                        added += 1;
+                    }
+                }
+                self.push_log(
+                    LogKind::System,
+                    format!("Imported {added} new commands and updated {replaced}."),
+                );
+            }
+            Err(err) => self.push_log(LogKind::Problem, err),
+        }
+    }
+
+    pub(crate) fn refresh_mics(&mut self) {
+        self.mic_names = crate::audio::list_inputs();
+    }
+
+    pub(crate) fn reopen_mic(&mut self) {
+        self.audio.open(self.config.audio_device.as_deref());
+        self.applied_audio = self.config.audio_device.clone();
+        self.refresh_mics();
+    }
+
+    pub(crate) fn start_download(&mut self, label: &str, url: &str, filename: &str) {
+        if self.download.is_some() {
+            return;
+        }
+        let dest = config::data_dir().join("models").join(filename);
+        self.download = Some(DownloadView {
+            label: label.into(),
+            bytes: 0,
+            total: None,
+        });
+        let tx = self.event_tx.clone();
+        let url = url.to_string();
+        thread::spawn(move || {
+            let tx_progress = tx.clone();
+            let result = stt::download_model(&url, &dest, move |bytes, total| {
+                let _ = tx_progress.send(WorkerEvent::DownloadProgress { bytes, total });
+            });
+            let _ = tx.send(WorkerEvent::DownloadFinished {
+                result: result.map(|()| dest),
+            });
+        });
+    }
+
+    fn pump(&mut self, ctx: &egui::Context) {
+        if !self.paint_while_hidden {
+            ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaintWhileHidden);
+            self.paint_while_hidden = true;
+        }
+        if ctx.input(|input| input.viewport().close_requested()) && self.dirty {
+            let _ = self.config.save();
+            self.dirty = false;
+        }
+        self.hotkeys.set_suspended(ctx.egui_wants_keyboard_input());
+        if self.applied_ptt != self.config.ptt {
+            self.applied_ptt = self.config.ptt.clone();
+            self.hotkeys.set_binding(keys::parse_ptt(&self.config.ptt));
+        }
+        if self.applied_audio != self.config.audio_device {
+            self.applied_audio = self.config.audio_device.clone();
+            self.audio.open(self.config.audio_device.as_deref());
+        }
+        self.poll_sticks();
+        if self.hotkeys.poll_pressed() {
+            self.on_ptt();
+        }
+        self.poll_events();
+        self.tick_phase();
+        self.tick_limit();
+        if let Some(err) = self.audio.take_stream_error() {
+            self.push_log(LogKind::Problem, format!("Microphone: {err}"));
+        }
+        self.note_edits();
+        ctx.request_repaint_after(Duration::from_millis(16));
+    }
+
+    fn poll_sticks(&mut self) {
+        let edges = self.sticks.poll();
+        if self.listen_joy {
+            if let Some(edge) = edges.into_iter().next() {
+                let message = format!("Talk button is {} button {}.", edge.name, edge.button + 1);
+                self.config.joystick = Some(JoyBind {
+                    guid: edge.guid,
+                    name: edge.name,
+                    button: edge.button,
+                });
+                self.listen_joy = false;
+                self.push_log(LogKind::System, message);
+            }
+            return;
+        }
+        let Some(bind) = self.config.joystick.clone() else {
+            return;
+        };
+        if edges.iter().any(|edge| {
+            edge.button == bind.button && (edge.guid == bind.guid || edge.name == bind.name)
+        }) {
+            self.on_ptt();
+        }
+    }
+
+    fn poll_events(&mut self) {
+        while let Ok(event) = self.event_rx.try_recv() {
+            match event {
+                WorkerEvent::Transcript { epoch, result } => self.on_transcript(epoch, result),
+                WorkerEvent::Injected {
+                    epoch,
+                    cue,
+                    headline,
+                    detail,
+                    result,
+                } => self.on_injected(epoch, cue, headline, detail, result),
+                WorkerEvent::DownloadProgress { bytes, total } => {
+                    if let Some(download) = &mut self.download {
+                        download.bytes = bytes;
+                        download.total = total;
+                    }
+                }
+                WorkerEvent::DownloadFinished { result } => {
+                    self.download = None;
+                    match result {
+                        Ok(path) => {
+                            self.config.stt.model_path = path.display().to_string();
+                            self.config.stt.engine = SttEngine::Local;
+                            self.push_log(
+                                LogKind::System,
+                                format!("Speech model saved to {}.", path.display()),
+                            );
+                        }
+                        Err(err) => self.push_log(LogKind::Problem, err),
+                    }
+                }
+            }
+        }
+    }
+
+    fn tick_phase(&mut self) {
+        let now = self.now_ms();
+        let before = self.phase;
+        let (phase, effect) = phase::on_tick(self.phase, now);
+        self.phase = phase;
+        if matches!(before, Phase::StartWindow { .. }) && matches!(self.phase, Phase::Listening) {
+            self.cue(CueKind::Ready);
+        }
+        self.apply(effect);
+    }
+
+    fn tick_limit(&mut self) {
+        let Some(started) = self.capture_started else {
+            return;
+        };
+        if !phase::is_capturing(self.phase) {
+            return;
+        }
+        if started.elapsed() >= Duration::from_millis(self.config.max_record_ms) {
+            self.push_log(
+                LogKind::System,
+                "Hit the recording limit. Sending what I heard.".into(),
+            );
+            self.force_send();
+        }
+    }
+
+    fn apply(&mut self, effect: Effect) {
+        match effect {
+            Effect::None => {}
+            Effect::BeginCapture => {
+                self.utterance = self.epoch.fetch_add(1, Ordering::SeqCst) + 1;
+                self.audio.start_capture();
+                self.capture_started = Some(Instant::now());
+                self.cue(CueKind::Listen);
+            }
+            Effect::DiscardCapture => {
+                self.epoch.fetch_add(1, Ordering::SeqCst);
+                self.utterance = 0;
+                self.audio.discard();
+                self.capture_started = None;
+                self.phase = Phase::Idle;
+                self.cue(CueKind::Cancel);
+                self.set_outcome("Cancelled", "Nothing was sent.");
+                self.push_log(LogKind::Cancel, "Cancelled.".into());
+            }
+            Effect::EndCapture => self.begin_transcribe(),
+            Effect::CancelInFlight => {
+                self.epoch.fetch_add(1, Ordering::SeqCst);
+                self.utterance = 0;
+                self.audio.discard();
+                self.capture_started = None;
+                self.phase = Phase::Idle;
+                self.cue(CueKind::Cancel);
+                self.set_outcome("Cancelled", "The transcription was dropped.");
+                self.push_log(LogKind::Cancel, "Cancelled during transcription.".into());
+            }
+        }
+    }
+
+    fn begin_transcribe(&mut self) {
+        let (samples, rate) = self.audio.stop_capture();
+        self.capture_started = None;
+        let lead = if self.config.cues { 90 } else { 0 };
+        let samples = resample::trim_lead(samples, rate, lead);
+        let min_samples = (rate as usize / 4).max(1);
+        if samples.len() < min_samples {
+            self.fail_listen("That clip was too short.");
+            return;
+        }
+        let level = resample::rms(&samples);
+        if level < self.config.silence_rms {
+            self.fail_listen(&format!(
+                "Too quiet (level {level:.3}). Move closer, or lower the silence gate in Setup."
+            ));
+            return;
+        }
+        let mut samples_16k = resample::resample_linear(&samples, rate, 16_000);
+        let cap = 16_000 * 45;
+        if samples_16k.len() > cap {
+            samples_16k.truncate(cap);
+        }
+        self.phase = Phase::Transcribing;
+        self.cue(CueKind::Working);
+        let settings = stt::settings_from(&self.config);
+        let epoch = self.utterance;
+        if self
+            .stt_tx
+            .send(SttCommand::Transcribe {
+                epoch,
+                samples_16k,
+                settings,
+            })
+            .is_err()
+        {
+            self.fail_listen("The speech worker has stopped.");
+        }
+    }
+
+    fn on_transcript(&mut self, epoch: u64, result: Result<String, String>) {
+        if epoch != self.utterance || epoch != self.epoch.load(Ordering::SeqCst) {
+            return;
+        }
+        if self.phase != Phase::Transcribing {
+            return;
+        }
+        match result {
+            Ok(text) => self.dispatch_text(&text, None, true),
+            Err(err) => self.fail_listen(&err),
+        }
+    }
+
+    fn dispatch_text(&mut self, text: &str, mode_override: Option<Mode>, from_mic: bool) {
+        if !from_mic {
+            self.utterance = self.epoch.load(Ordering::SeqCst);
+        }
+        let mode = mode_override.unwrap_or(self.config.mode);
+        let dispatch = plan::plan_action(&PlanInput {
+            mode,
+            text,
+            chat: &self.config.chat,
+            commands: &self.config.commands,
+            token_floor: self.config.token_floor,
+            command_max_extra: self.config.command_max_extra,
+            mixed_max_extra: self.config.mixed_max_extra,
+            practice: !self.config.send_keys,
+        });
+        let send = dispatch.ok && self.config.send_keys && !dispatch.steps.is_empty();
+        if !send {
+            self.phase = Phase::Idle;
+            self.cue(dispatch.cue);
+            self.set_outcome(&dispatch.headline, &dispatch.detail);
+            let kind = if dispatch.ok {
+                LogKind::Heard
+            } else {
+                LogKind::Problem
+            };
+            self.push_log(kind, format!("{} — {}", dispatch.headline, dispatch.detail));
+            return;
+        }
+        let abort = if dispatch.cue == CueKind::ChatSent {
+            self.config
+                .chat
+                .active()
+                .and_then(|profile| keys::parse_sequence(&profile.abort).ok())
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        self.phase = Phase::Dispatching;
+        self.set_outcome(&dispatch.headline, "Sending keys…");
+        let request = InjectRequest {
+            epoch: self.utterance,
+            steps: dispatch.steps,
+            abort,
+            char_delay_ms: self.config.chat.char_delay_ms,
+            focus_title: self.config.focus_title.clone(),
+            require_focus: self.config.require_focus,
+            headline: dispatch.headline,
+            detail: dispatch.detail,
+            cue: dispatch.cue,
+        };
+        if self.inject_tx.send(request).is_err() {
+            self.phase = Phase::Idle;
+            self.fail_listen("The key worker has stopped.");
+        }
+    }
+
+    fn on_injected(
+        &mut self,
+        epoch: u64,
+        cue: CueKind,
+        headline: String,
+        detail: String,
+        result: Result<(), String>,
+    ) {
+        if epoch != self.utterance {
+            return;
+        }
+        self.phase = Phase::Idle;
+        match result {
+            Ok(()) => {
+                let detail = format!("Sent. {detail}");
+                self.cue(cue);
+                self.set_outcome(&headline, &detail);
+                self.push_log(LogKind::Sent, format!("{headline} — {detail}"));
+            }
+            Err(err) => {
+                self.cue(CueKind::Problem);
+                self.set_outcome("Not sent", &err);
+                self.push_log(LogKind::Problem, err);
+            }
+        }
+    }
+
+    fn fail_listen(&mut self, message: &str) {
+        self.phase = Phase::Idle;
+        self.cue(CueKind::Problem);
+        self.set_outcome("Didn't catch that", message);
+        self.push_log(LogKind::Problem, message.to_string());
+    }
+
+    fn cue(&mut self, kind: CueKind) {
+        if self.config.cues {
+            self.cues.play(kind, self.config.cue_volume);
+        }
+    }
+
+    fn set_outcome(&mut self, headline: &str, detail: &str) {
+        self.last_headline = headline.to_string();
+        self.last_detail = detail.to_string();
+    }
+
+    fn push_log(&mut self, kind: LogKind, message: String) {
+        let time = chrono::Local::now().format("%H:%M:%S").to_string();
+        self.events.push_back(LogEntry {
+            time: time.clone(),
+            kind,
+            message: message.clone(),
+        });
+        while self.events.len() > 200 {
+            self.events.pop_front();
+        }
+        let path = config::log_path();
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+            let _ = writeln!(file, "{time}  {message}");
+        }
+    }
+
+    fn note_edits(&mut self) {
+        let snapshot = serde_json::to_string(&self.config).unwrap_or_default();
+        if snapshot != self.edit_snapshot {
+            self.edit_snapshot = snapshot;
+            self.dirty = true;
+            self.last_edit = Instant::now();
+        }
+        if self.dirty && self.last_edit.elapsed() > Duration::from_millis(400) {
+            match self.config.save() {
+                Ok(()) => {
+                    self.dirty = false;
+                    self.save_error = None;
+                }
+                Err(err) => {
+                    self.save_error = Some(err);
+                    self.last_edit = Instant::now();
+                }
+            }
+        }
+    }
+}
+
+impl eframe::App for CallsignApp {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.pump(ctx);
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        crate::ui::draw(self, ui);
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        let _ = self.config.save();
+    }
+}

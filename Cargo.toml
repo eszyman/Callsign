@@ -1,0 +1,39 @@
+[package]
+name = "callsign"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Speech companion for IL-2 Sturmovik: dictate chat, or speak a command and send the keys."
+license = "MIT"
+readme = "README.md"
+
+[features]
+default = ["whisper"]
+whisper = ["dep:whisper-rs"]
+
+[dependencies]
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "persistence", "wayland", "x11"] }
+egui = "0.37"
+global-hotkey = "0.9"
+enigo = "0.6"
+cpal = "0.15"
+sdl2 = { version = "0.38", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+directories = "6"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+strsim = "0.11"
+x11rb = "0.13"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "multipart", "json", "rustls-tls"] }
+whisper-rs = { version = "0.16", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Threading",
+] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

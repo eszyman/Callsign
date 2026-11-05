@@ -43,8 +43,8 @@ Windows, in PowerShell, from a copy of the folder on the Windows drive (a build 
 
 1. Rust from [rustup.rs](https://rustup.rs), the default MSVC toolchain.
 2. Visual Studio Build Tools, with the “Desktop development with C++” workload. The generator `Visual Studio 17 2022` in a failed build means this part is already present.
-3. CMake from [cmake.org/download](https://cmake.org/download/). In the installer, choose **Add CMake to the system PATH**. Close PowerShell and open it again, then `cmake --version` must print a version. `sdl2-sys` fails with `is cmake not installed?` when this step was skipped. Visual Studio’s own CMake does not count unless that `bin` folder is on PATH.
-4. LLVM from [the LLVM releases](https://github.com/llvm/llvm-project/releases), added to PATH, so the local speech model can find `libclang`. The bundled SDL library and that model both compile from C or C++.
+3. CMake from [cmake.org/download](https://cmake.org/download/). In the installer, choose **Add CMake to the system PATH**. Close PowerShell and open it again, then `cmake --version` must print a version. `sdl2-sys` fails with `is cmake not installed?` when this step was skipped. Visual Studio’s own CMake does not count unless that `bin` folder is on PATH. CMake 4 also needs `CMAKE_POLICY_VERSION_MINIMUM=3.5`, which this repo sets in `.cargo/config.toml`.
+4. LLVM, which supplies `libclang`. From PowerShell: `winget install LLVM.LLVM`. The installer does not put `C:\Program Files\LLVM\bin` on PATH. Add that folder to your user Path, set `LIBCLANG_PATH` to the same folder, then open a new PowerShell and check `clang --version`. The bundled SDL library and the speech model both compile from C or C++.
 
 ```powershell
 cd C:\src\Callsign

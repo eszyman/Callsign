@@ -10,6 +10,7 @@ mod config;
 mod cues;
 mod focus;
 mod hotkey;
+mod icon_file;
 mod inject;
 mod keys;
 mod match_cmd;

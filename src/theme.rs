@@ -140,33 +140,11 @@ pub fn display_font(size: f32) -> FontId {
 }
 
 pub fn app_icon() -> egui::IconData {
-    let size = 64u32;
-    let mut rgba = vec![0u8; (size * size * 4) as usize];
-    for y in 0..size {
-        for x in 0..size {
-            let i = ((y * size + x) * 4) as usize;
-            let dx = x as i32 - 32;
-            let dy = y as i32 - 32;
-            let distance = dx * dx + dy * dy;
-            if distance <= 13 * 13 {
-                rgba[i] = 0xf0;
-                rgba[i + 1] = 0xa2;
-                rgba[i + 2] = 0x02;
-            } else if distance <= 20 * 20 {
-                rgba[i] = 0x8a;
-                rgba[i + 1] = 0x64;
-                rgba[i + 2] = 0x10;
-            } else {
-                rgba[i] = 0x1c;
-                rgba[i + 1] = 0x1f;
-                rgba[i + 2] = 0x18;
-            }
-            rgba[i + 3] = 255;
-        }
-    }
+    let (width, height, rgba) = crate::icon_file::decode_png(include_bytes!("../assets/icon.png"))
+        .expect("assets/icon.png");
     egui::IconData {
         rgba,
-        width: size,
-        height: size,
+        width,
+        height,
     }
 }

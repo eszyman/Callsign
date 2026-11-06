@@ -51,7 +51,7 @@ cd C:\src\Callsign
 cargo build --release
 ```
 
-The program is one file, `target\release\callsign.exe`. SDL is linked into that file, so the build does not leave an `SDL2.dll` beside it. The speech engine is linked in the same way. The model file Setup downloads is still separate, and so are Windows' own libraries. On Linux, from the project folder, `cargo run --release` does the same job.
+The program is one file, `target\release\callsign.exe`. SDL is linked into that file, so the build does not leave an `SDL2.dll` beside it. The speech engine is linked in the same way. The keycap in `assets/icon.png` is embedded in the executable, and the same image is the window and taskbar icon. The model file Setup downloads is still separate, and so are Windows' own libraries. On Linux, from the project folder, `cargo run --release` does the same job.
 
 The first release build compiles the local speech engine and takes a while. To skip that and use only a speech server:
 

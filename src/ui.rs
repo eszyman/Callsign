@@ -428,16 +428,6 @@ fn chat_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             ui.add(egui::Slider::new(&mut app.config.chat.after_open_ms, 40u64..=400).text("ms after opening chat"));
         });
         ui.add(egui::Slider::new(&mut app.config.chat.max_chars, 40usize..=240).text("character cap"));
-        ui.add_space(10.0);
-        ui.label(RichText::new("Talk button").size(12.0).color(theme::FAINT));
-        gesture_picker(ui, &mut app.config.chat_gesture);
-        ui.label(
-            RichText::new(
-                "Press twice is press, speak, press again. Hold to talk sends when you let go. Mixed uses this too. The commands button has its own.",
-            )
-            .size(12.5)
-            .color(theme::MUTED),
-        );
         ui.add_space(8.0);
         let idle = app.phase == Phase::Idle;
         if ui
@@ -457,32 +447,6 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             RichText::new(
                 "A phrase matches when its words show up in order. Short words have to be exact. These keys are the printed IL-2 Great Battles defaults — open Controls in the sim and check them before you turn key output on. Weapons start off: a misheard word should not drop ordnance. Eject and the gun trigger are not in this list.",
             )
-            .color(theme::MUTED),
-        );
-        ui.add_space(10.0);
-        ui.label(RichText::new("Commands button").size(12.0).color(theme::FAINT));
-        gesture_picker(ui, &mut app.config.command_gesture);
-        ui.label(
-            RichText::new(
-                "Hold to talk is the quick one: hold, speak, release. Press twice matches chat, and a long second press still cancels. The header Commands mode uses this for the talk button too.",
-            )
-            .size(12.5)
-            .color(theme::MUTED),
-        );
-        ui.add_space(8.0);
-        ui.add(
-            egui::Slider::new(&mut app.config.command_gap_ms, 0u64..=300)
-                .text("ms between keys"),
-        );
-        ui.add(
-            egui::Slider::new(&mut app.config.command_lead_ms, 0u64..=400)
-                .text("ms before the first key"),
-        );
-        ui.label(
-            RichText::new(
-                "Tab, 0, 8 needs a beat between keys so the radio menu can open. A key sequence that already says delay:120 keeps that wait. A single key ignores the gap.",
-            )
-            .size(12.5)
             .color(theme::MUTED),
         );
         ui.add_space(10.0);
@@ -799,11 +763,21 @@ fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
         }
         ui.add_space(8.0);
         stick_binder(app, ui, crate::app::StickCapture::Talk);
+        ui.add_space(10.0);
+        ui.label(RichText::new("Gesture").size(12.0).color(theme::FAINT));
+        gesture_picker(ui, &mut app.config.chat_gesture);
+        ui.label(
+            RichText::new(
+                "Press twice is press, speak, press again. Hold that second press to cancel. Hold to talk sends when you let go. Chat and Mixed use this. Commands mode uses the commands gesture below.",
+            )
+            .size(12.5)
+            .color(theme::MUTED),
+        );
         ui.add_space(16.0);
         section(ui, "Commands button");
         ui.label(
             RichText::new(
-                "A second control that always runs Commands, including when the header is set to Chat. Press, speak, press again to send, and hold that second press to cancel. Use a different key and a different stick button from the talk control.",
+                "A second control that always runs Commands, including when the header is set to Chat. Use a different key and a different stick button from the talk control.",
             )
             .color(theme::MUTED),
         );
@@ -827,6 +801,32 @@ fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
         }
         ui.add_space(8.0);
         stick_binder(app, ui, crate::app::StickCapture::Command);
+        ui.add_space(10.0);
+        ui.label(RichText::new("Gesture").size(12.0).color(theme::FAINT));
+        gesture_picker(ui, &mut app.config.command_gesture);
+        ui.label(
+            RichText::new(
+                "Hold to talk is hold, speak, release. Press twice matches the talk button, and a long second press still cancels. With the header on Commands, the talk button uses this gesture too.",
+            )
+            .size(12.5)
+            .color(theme::MUTED),
+        );
+        ui.add_space(8.0);
+        ui.add(
+            egui::Slider::new(&mut app.config.command_gap_ms, 0u64..=300).text("ms between keys"),
+        );
+        ui.add(
+            egui::Slider::new(&mut app.config.command_lead_ms, 0u64..=400)
+                .text("ms before the first key"),
+        );
+        ui.label(
+            RichText::new(
+                "Tab, 0, 8 needs a beat between keys so the radio menu can open. A sequence that already says delay:120 keeps that wait. A single key ignores the gap.",
+            )
+            .size(12.5)
+            .color(theme::MUTED),
+        );
+        ui.add_space(8.0);
         if same_stick(&app.config.joystick, &app.config.command_joystick) {
             ui.label(
                 RichText::new("That stick button is also the talk button. The talk button wins.")

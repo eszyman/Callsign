@@ -25,7 +25,7 @@ Chat and Commands each have a gesture. Chat and Mixed start on **Press twice**. 
 
 A recording longer than 30 seconds sends itself. The Cancel button on the desk still drops a line that is already being transcribed.
 
-Command macros wait between keys (100 ms unless you change it) so a sequence such as Tab, 0, 8 can open a radio menu. A slider on the Commands page sets that gap, and another sets a wait before the first key. A sequence that already contains `delay:120` keeps that wait.
+Command macros wait between keys (100 ms unless you change it) so a sequence such as Tab, 0, 8 can open a radio menu. Setup, next to each button, chooses the gesture. Next to the commands button, one slider sets the gap between keys and another sets a wait before the first key. A sequence that already contains `delay:120` keeps that wait.
 
 While you are typing in Callsign's own fields, the keyboard talk button is released so the key can be typed.
 

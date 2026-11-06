@@ -208,9 +208,7 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
         .corner_radius(12)
         .min_size(Vec2::new(width, 56.0));
         let response = ui.add_enabled(enabled, button);
-        if response.clicked() {
-            app.on_ptt();
-        }
+        app.note_screen_button(response.is_pointer_button_down_on());
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             let capturing = phase::is_capturing(app.phase);
@@ -251,8 +249,28 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
                     .size(13.0),
             );
         }
-        if let Some(err) = app.hotkeys.error() {
+        if let Some(err) = app.hotkeys.talk_error() {
             ui.label(RichText::new(err).size(12.5).color(theme::RED));
+        }
+        let command_key = command_label(&app.config.command_ptt);
+        if command_key.is_some() || app.config.command_joystick.is_some() {
+            ui.add_space(8.0);
+            ui.label(
+                RichText::new("COMMANDS")
+                    .size(11.0)
+                    .color(theme::FAINT)
+                    .extra_letter_spacing(1.1),
+            );
+            if let Some(label) = command_key {
+                ui.label(RichText::new(label).color(theme::TEXT).size(16.0));
+            }
+            if let Some(joy) = &app.config.command_joystick {
+                ui.label(
+                    RichText::new(format!("{} button {}", joy.name, joy.button + 1))
+                        .color(theme::MUTED)
+                        .size(13.0),
+                );
+            }
         }
         ui.add_space(10.0);
         if app.config.send_keys {
@@ -566,25 +584,43 @@ fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             }
         }
         ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            let listen = if app.listen_joy {
-                "Listening for a button…"
-            } else {
-                "Listen for a stick button"
-            };
-            if ui.button(listen).clicked() {
-                app.listen_joy = !app.listen_joy;
+        stick_binder(app, ui, crate::app::StickCapture::Talk);
+        ui.add_space(16.0);
+        section(ui, "Commands button");
+        ui.label(
+            RichText::new(
+                "A second control that always runs Commands, including when the header is set to Chat. Press, speak, press again to send, and hold that second press to cancel. Use a different key and a different stick button from the talk control.",
+            )
+            .color(theme::MUTED),
+        );
+        ui.add_space(8.0);
+        labeled(ui, "Keyboard", &mut app.config.command_ptt);
+        match command_label(&app.config.command_ptt) {
+            Some(label) => {
+                ui.label(RichText::new(label).color(theme::GREEN).size(13.0));
             }
-            if ui.button("Clear stick").clicked() {
-                app.config.joystick = None;
-                app.listen_joy = false;
+            None if app.config.command_ptt.trim().is_empty() => {
+                ui.label(RichText::new("Not set").color(theme::FAINT).size(13.0));
             }
-        });
-        if let Some(joy) = &app.config.joystick {
+            None => {
+                ui.label(
+                    RichText::new("That key isn't recognized.").color(theme::RED).size(13.0),
+                );
+            }
+        }
+        if let Some(err) = app.hotkeys.command_error() {
+            ui.label(RichText::new(err).color(theme::RED).size(13.0));
+        }
+        ui.add_space(8.0);
+        stick_binder(app, ui, crate::app::StickCapture::Command);
+        if same_stick(&app.config.joystick, &app.config.command_joystick) {
             ui.label(
-                RichText::new(format!("{} · button {}", joy.name, joy.button + 1)).color(theme::TEXT),
+                RichText::new("That stick button is also the talk button. The talk button wins.")
+                    .color(theme::AMBER)
+                    .size(13.0),
             );
         }
+        ui.add_space(8.0);
         if let Some(err) = app.sticks.error() {
             ui.label(RichText::new(err).color(theme::RED).size(13.0));
         } else {
@@ -728,8 +764,8 @@ fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             .default_open(false)
             .show(ui, |ui| {
                 ui.add(
-                    egui::Slider::new(&mut app.config.double_tap_ms, 140u64..=600)
-                        .text("double-tap window, ms"),
+                    egui::Slider::new(&mut app.config.long_press_ms, 300u64..=1500)
+                        .text("hold to cancel, ms"),
                 );
                 let mut seconds = app.config.max_record_ms as f32 / 1000.0;
                 ui.add(egui::Slider::new(&mut seconds, 5.0..=30.0).suffix(" s").text("max recording"));
@@ -804,7 +840,7 @@ fn gesture_strip(ui: &mut egui::Ui) {
     let steps = [
         ("1", "Press and speak"),
         ("2", "Press to send"),
-        ("3", "Press twice to cancel"),
+        ("3", "Hold to cancel"),
     ];
     ui.horizontal(|ui| {
         for (number, label) in steps {
@@ -819,7 +855,7 @@ fn gesture_strip(ui: &mut egui::Ui) {
     });
     ui.label(
         RichText::new(
-            "A short tick means the next press will send. A second tap inside the window cancels.",
+            "A short tick means the next press will send. Hold that press and the line is dropped.",
         )
         .size(12.0)
         .color(theme::FAINT),
@@ -921,7 +957,8 @@ fn lamp(ui: &mut egui::Ui, color: Color32, radius: f32) {
 fn lamp_color(phase: Phase) -> Color32 {
     match phase {
         Phase::Idle => theme::FAINT,
-        Phase::StartWindow { .. } | Phase::Listening | Phase::Arming { .. } => theme::AMBER,
+        Phase::Listening { .. } => theme::AMBER,
+        Phase::Holding { .. } => theme::RED,
         Phase::Transcribing | Phase::Dispatching => theme::BLUE,
     }
 }
@@ -930,14 +967,14 @@ fn talk_style(phase: Phase) -> (&'static str, Color32, Color32, bool) {
     let ink = Color32::from_rgb(0x1a, 0x14, 0x04);
     match phase {
         Phase::Idle => ("Talk", theme::AMBER, ink, true),
-        Phase::StartWindow { .. } | Phase::Listening => (
+        Phase::Listening { .. } => (
             "Send",
             theme::GREEN,
             Color32::from_rgb(0x14, 0x18, 0x0c),
             true,
         ),
-        Phase::Arming { .. } => (
-            "Cancel",
+        Phase::Holding { .. } => (
+            "Hold",
             theme::RED,
             Color32::from_rgb(0x1c, 0x0e, 0x0a),
             true,
@@ -949,6 +986,64 @@ fn talk_style(phase: Phase) -> (&'static str, Color32, Color32, bool) {
 
 fn nav_frame() -> egui::Frame {
     egui::Frame::new().fill(theme::NAV).inner_margin(12)
+}
+
+fn stick_binder(app: &mut CallsignApp, ui: &mut egui::Ui, target: crate::app::StickCapture) {
+    ui.push_id(target as u8, |ui| {
+        let listening = app.listen_stick == Some(target);
+        let listen = if listening {
+            "Listening for a button…"
+        } else {
+            "Listen for a stick button"
+        };
+        ui.horizontal(|ui| {
+            if ui.button(listen).clicked() {
+                app.listen_stick = if listening { None } else { Some(target) };
+            }
+            if ui.button("Clear stick").clicked() {
+                match target {
+                    crate::app::StickCapture::Talk => app.config.joystick = None,
+                    crate::app::StickCapture::Command => app.config.command_joystick = None,
+                }
+                if app.listen_stick == Some(target) {
+                    app.listen_stick = None;
+                }
+            }
+        });
+        let bound = match target {
+            crate::app::StickCapture::Talk => app.config.joystick.as_ref(),
+            crate::app::StickCapture::Command => app.config.command_joystick.as_ref(),
+        };
+        if let Some(joy) = bound {
+            ui.label(
+                RichText::new(format!("{} · button {}", joy.name, joy.button + 1))
+                    .color(theme::TEXT),
+            );
+        }
+    });
+}
+
+fn command_label(text: &str) -> Option<String> {
+    let text = text.trim();
+    if text.is_empty() {
+        return None;
+    }
+    keys::parse_ptt(text)
+        .ok()
+        .map(|chord| keys::describe_chord(&chord.modifiers, chord.key))
+}
+
+fn same_stick(
+    talk: &Option<crate::config::JoyBind>,
+    command: &Option<crate::config::JoyBind>,
+) -> bool {
+    match (talk, command) {
+        (Some(talk), Some(command)) => {
+            talk.button == command.button
+                && (talk.guid == command.guid || talk.name == command.name)
+        }
+        _ => false,
+    }
 }
 
 fn group_rank(name: &str) -> u8 {

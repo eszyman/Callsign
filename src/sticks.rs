@@ -61,6 +61,16 @@ impl StickHub {
             .collect()
     }
 
+    pub fn is_held(&self, guid: &str, name: &str, button: u32) -> bool {
+        let Some(inner) = &self.inner else {
+            return false;
+        };
+        inner.open.iter().enumerate().any(|(index, stick)| {
+            (stick.guid == guid || stick.name == name)
+                && inner.prev.get(&(index, button)).copied().unwrap_or(false)
+        })
+    }
+
     pub fn poll(&mut self) -> Vec<Edge> {
         let Some(inner) = self.inner.as_mut() else {
             return Vec::new();

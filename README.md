@@ -8,12 +8,12 @@ Key output starts **off**. Until you turn it on in Setup, Callsign only shows wh
 
 ## The gesture
 
-One push-to-talk control is shared by chat and commands. Scroll Lock is the default, because IL-2 rarely wants that key. A joystick or HOTAS button can be bound as well. The on-screen Talk button does the same thing.
+Scroll Lock is the default talk key, because IL-2 rarely wants it. A joystick or HOTAS button can be bound as well, and the on-screen Talk button does the same thing. A second key, and a second stick button, can be set to always run Commands even when the header is on Chat.
 
-1. **Press once and speak.** A second tap inside the double-tap window (320 ms) cancels an accidental press.
-2. After that window, a short tick means the next press will send. **Press once to send.**
-3. **Press twice** (a second tap inside the same window) **to cancel** instead.
-4. If you do nothing, the arming window expires and the line is sent. A recording longer than 30 seconds sends itself.
+1. **Press once and speak.** Releasing that press keeps listening. A short tick means the next press will send.
+2. **Press again to send.**
+3. **Hold that second press** (about 700 ms) **to cancel** before the line is transcribed. That is the way out of a stumble.
+4. A recording longer than 30 seconds sends itself. The Cancel button on the desk still drops a line that is already being transcribed.
 
 While you are typing in Callsign's own fields, the keyboard talk button is released so the key can be typed.
 

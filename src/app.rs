@@ -53,6 +53,21 @@ pub(crate) struct DownloadView {
     pub total: Option<u64>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StickCapture {
+    Talk,
+    Command,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Press {
+    Screen,
+    TalkStick,
+    CommandStick,
+    TalkKey,
+    CommandKey,
+}
+
 pub struct CallsignApp {
     pub(crate) config: Config,
     pub(crate) phase: Phase,
@@ -63,7 +78,7 @@ pub struct CallsignApp {
     pub(crate) try_line: String,
     pub(crate) command_test: String,
     pub(crate) import_path: String,
-    pub(crate) listen_joy: bool,
+    pub(crate) listen_stick: Option<StickCapture>,
     pub(crate) download: Option<DownloadView>,
     pub(crate) mic_names: Vec<String>,
     pub(crate) save_error: Option<String>,
@@ -73,10 +88,18 @@ pub struct CallsignApp {
     pub(crate) hotkeys: HotkeyHub,
     epoch: Arc<AtomicU64>,
     utterance: u64,
+    gesture_mode: Option<Mode>,
     started: Instant,
-    last_press_ms: u64,
+    last_down_ms: u64,
     capture_started: Option<Instant>,
+    /// The control that is physically down for the current press.
+    /// A different control releasing must not send or cancel that press.
+    press: Option<Press>,
+    talk_stick_down: bool,
+    command_stick_down: bool,
+    screen_down: bool,
     applied_ptt: String,
+    applied_command_ptt: String,
     applied_audio: Option<String>,
     edit_snapshot: String,
     dirty: bool,
@@ -109,8 +132,10 @@ impl CallsignApp {
         let mut audio = AudioEngine::new();
         audio.open(config.audio_device.as_deref());
         let mut hotkeys = HotkeyHub::new();
-        hotkeys.set_binding(keys::parse_ptt(&config.ptt));
+        hotkeys.set_talk(keys::parse_ptt(&config.ptt));
+        hotkeys.set_command(command_binding(&config.command_ptt));
         let applied_ptt = config.ptt.clone();
+        let applied_command_ptt = config.command_ptt.clone();
         let applied_audio = config.audio_device.clone();
         let mic_names = crate::audio::list_inputs();
         let edit_snapshot = serde_json::to_string(&config).unwrap_or_default();
@@ -124,7 +149,7 @@ impl CallsignApp {
             try_line: String::new(),
             command_test: String::new(),
             import_path: String::new(),
-            listen_joy: false,
+            listen_stick: None,
             download: None,
             mic_names,
             save_error: None,
@@ -134,10 +159,16 @@ impl CallsignApp {
             hotkeys,
             epoch,
             utterance: 0,
+            gesture_mode: None,
             started: Instant::now(),
-            last_press_ms: 0,
+            last_down_ms: 0,
             capture_started: None,
+            press: None,
+            talk_stick_down: false,
+            command_stick_down: false,
+            screen_down: false,
             applied_ptt,
+            applied_command_ptt,
             applied_audio,
             edit_snapshot,
             dirty: false,
@@ -172,14 +203,57 @@ impl CallsignApp {
         self.started.elapsed().as_millis() as u64
     }
 
-    pub(crate) fn on_ptt(&mut self) {
-        let now = self.now_ms();
-        if now.saturating_sub(self.last_press_ms) < 45 {
+    pub(crate) fn note_screen_button(&mut self, down: bool) {
+        if down && !self.screen_down {
+            self.edge_down(Press::Screen, false);
+        } else if !down && self.screen_down {
+            self.edge_up(Press::Screen);
+        }
+        self.screen_down = down;
+    }
+
+    fn edge_down(&mut self, press: Press, command: bool) {
+        if self.press.is_some() {
             return;
         }
-        self.last_press_ms = now;
-        let (phase, effect) = phase::on_press(self.phase, now, self.config.double_tap_ms);
+        let now = self.now_ms();
+        if now.saturating_sub(self.last_down_ms) < 45 {
+            return;
+        }
+        let consumes = matches!(
+            self.phase,
+            Phase::Idle | Phase::Listening { opener_down: false } | Phase::Transcribing
+        );
+        if !consumes {
+            return;
+        }
+        self.last_down_ms = now;
+        self.press = Some(press);
+        let was_idle = self.phase == Phase::Idle;
+        let (phase, effect) = phase::on_down(self.phase, now);
+        if was_idle && effect == Effect::BeginCapture {
+            self.gesture_mode = Some(if command {
+                Mode::Command
+            } else {
+                self.config.mode
+            });
+        }
         self.phase = phase;
+        self.apply(effect);
+    }
+
+    fn edge_up(&mut self, press: Press) {
+        if self.press != Some(press) {
+            return;
+        }
+        self.press = None;
+        let now = self.now_ms();
+        let opener = matches!(self.phase, Phase::Listening { opener_down: true });
+        let (phase, effect) = phase::on_up(self.phase, now, self.config.long_press_ms);
+        self.phase = phase;
+        if opener && matches!(self.phase, Phase::Listening { opener_down: false }) {
+            self.cue(CueKind::Ready);
+        }
         self.apply(effect);
     }
 
@@ -346,15 +420,30 @@ impl CallsignApp {
         self.hotkeys.set_suspended(ctx.egui_wants_keyboard_input());
         if self.applied_ptt != self.config.ptt {
             self.applied_ptt = self.config.ptt.clone();
-            self.hotkeys.set_binding(keys::parse_ptt(&self.config.ptt));
+            self.hotkeys.set_talk(keys::parse_ptt(&self.config.ptt));
+        }
+        if self.applied_command_ptt != self.config.command_ptt {
+            self.applied_command_ptt = self.config.command_ptt.clone();
+            self.hotkeys
+                .set_command(command_binding(&self.config.command_ptt));
         }
         if self.applied_audio != self.config.audio_device {
             self.applied_audio = self.config.audio_device.clone();
             self.audio.open(self.config.audio_device.as_deref());
         }
         self.poll_sticks();
-        if self.hotkeys.poll_pressed() {
-            self.on_ptt();
+        let edges = self.hotkeys.poll();
+        for edge in edges {
+            let press = if edge.command {
+                Press::CommandKey
+            } else {
+                Press::TalkKey
+            };
+            if edge.down {
+                self.edge_down(press, edge.command);
+            } else {
+                self.edge_up(press);
+            }
         }
         self.poll_events();
         self.tick_phase();
@@ -368,26 +457,70 @@ impl CallsignApp {
 
     fn poll_sticks(&mut self) {
         let edges = self.sticks.poll();
-        if self.listen_joy {
+        if let Some(target) = self.listen_stick {
             if let Some(edge) = edges.into_iter().next() {
-                let message = format!("Talk button is {} button {}.", edge.name, edge.button + 1);
-                self.config.joystick = Some(JoyBind {
+                let message = match target {
+                    StickCapture::Talk => {
+                        format!("Talk button is {} button {}.", edge.name, edge.button + 1)
+                    }
+                    StickCapture::Command => {
+                        format!(
+                            "Commands button is {} button {}.",
+                            edge.name,
+                            edge.button + 1
+                        )
+                    }
+                };
+                let bind = JoyBind {
                     guid: edge.guid,
                     name: edge.name,
                     button: edge.button,
-                });
-                self.listen_joy = false;
+                };
+                match target {
+                    StickCapture::Talk => self.config.joystick = Some(bind),
+                    StickCapture::Command => self.config.command_joystick = Some(bind),
+                }
+                self.listen_stick = None;
                 self.push_log(LogKind::System, message);
             }
             return;
         }
-        let Some(bind) = self.config.joystick.clone() else {
+        self.follow_stick(false);
+        self.follow_stick(true);
+    }
+
+    fn follow_stick(&mut self, command: bool) {
+        if command && same_command_stick(&self.config) {
+            self.command_stick_down = false;
             return;
+        }
+        let bind = if command {
+            self.config.command_joystick.clone()
+        } else {
+            self.config.joystick.clone()
         };
-        if edges.iter().any(|edge| {
-            edge.button == bind.button && (edge.guid == bind.guid || edge.name == bind.name)
-        }) {
-            self.on_ptt();
+        let down = bind
+            .as_ref()
+            .is_some_and(|bind| self.sticks.is_held(&bind.guid, &bind.name, bind.button));
+        let was = if command {
+            self.command_stick_down
+        } else {
+            self.talk_stick_down
+        };
+        let press = if command {
+            Press::CommandStick
+        } else {
+            Press::TalkStick
+        };
+        if down && !was {
+            self.edge_down(press, command);
+        } else if !down && was {
+            self.edge_up(press);
+        }
+        if command {
+            self.command_stick_down = down;
+        } else {
+            self.talk_stick_down = down;
         }
     }
 
@@ -428,12 +561,8 @@ impl CallsignApp {
 
     fn tick_phase(&mut self) {
         let now = self.now_ms();
-        let before = self.phase;
-        let (phase, effect) = phase::on_tick(self.phase, now);
+        let (phase, effect) = phase::on_tick(self.phase, now, self.config.long_press_ms);
         self.phase = phase;
-        if matches!(before, Phase::StartWindow { .. }) && matches!(self.phase, Phase::Listening) {
-            self.cue(CueKind::Ready);
-        }
         self.apply(effect);
     }
 
@@ -465,6 +594,7 @@ impl CallsignApp {
             Effect::DiscardCapture => {
                 self.epoch.fetch_add(1, Ordering::SeqCst);
                 self.utterance = 0;
+                self.gesture_mode = None;
                 self.audio.discard();
                 self.capture_started = None;
                 self.phase = Phase::Idle;
@@ -476,6 +606,7 @@ impl CallsignApp {
             Effect::CancelInFlight => {
                 self.epoch.fetch_add(1, Ordering::SeqCst);
                 self.utterance = 0;
+                self.gesture_mode = None;
                 self.audio.discard();
                 self.capture_started = None;
                 self.phase = Phase::Idle;
@@ -542,7 +673,8 @@ impl CallsignApp {
         if !from_mic {
             self.utterance = self.epoch.load(Ordering::SeqCst);
         }
-        let mode = mode_override.unwrap_or(self.config.mode);
+        let mode =
+            mode_override.unwrap_or_else(|| self.gesture_mode.take().unwrap_or(self.config.mode));
         let dispatch = plan::plan_action(&PlanInput {
             mode,
             text,
@@ -623,6 +755,7 @@ impl CallsignApp {
 
     fn fail_listen(&mut self, message: &str) {
         self.phase = Phase::Idle;
+        self.gesture_mode = None;
         self.cue(CueKind::Problem);
         self.set_outcome("Didn't catch that", message);
         self.push_log(LogKind::Problem, message.to_string());
@@ -691,5 +824,24 @@ impl eframe::App for CallsignApp {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         let _ = self.config.save();
+    }
+}
+
+fn same_command_stick(config: &Config) -> bool {
+    match (&config.joystick, &config.command_joystick) {
+        (Some(talk), Some(command)) => {
+            talk.button == command.button
+                && (talk.guid == command.guid || talk.name == command.name)
+        }
+        _ => false,
+    }
+}
+
+fn command_binding(text: &str) -> Option<Result<crate::keys::Chord, String>> {
+    let text = text.trim();
+    if text.is_empty() {
+        None
+    } else {
+        Some(keys::parse_ptt(text))
     }
 }

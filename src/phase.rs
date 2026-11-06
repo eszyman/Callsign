@@ -1,22 +1,19 @@
 //! Push-to-talk gesture.
 //!
-//! The first press starts listening, but a second press inside the double-tap
-//! window cancels it — that is how an accidental tap is undone. Once that
-//! window has passed, one press arms a send and a second press (another tap
-//! inside the same window) cancels instead. Releasing the arming window with
-//! no second press is the confirm.
+//! The first press starts listening. A short second press sends. Holding that
+//! second press cancels the line before it is transcribed, which is the way
+//! out of a stumble.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Phase {
     Idle,
-    /// Listening, and a second tap still means "cancel this press".
-    StartWindow {
-        until_ms: u64,
+    /// Capturing. `opener_down` is the first press, which does not send.
+    Listening {
+        opener_down: bool,
     },
-    Listening,
-    /// A confirm tap landed. A second tap before `until_ms` cancels.
-    Arming {
-        until_ms: u64,
+    /// The second press is down. A quick release sends; holding cancels.
+    Holding {
+        since_ms: u64,
     },
     Transcribing,
     Dispatching,
@@ -31,50 +28,55 @@ pub enum Effect {
     CancelInFlight,
 }
 
-pub fn on_press(phase: Phase, now_ms: u64, double_ms: u64) -> (Phase, Effect) {
-    let window = double_ms.max(1);
+pub fn on_down(phase: Phase, now_ms: u64) -> (Phase, Effect) {
     match phase {
-        Phase::Idle => (
-            Phase::StartWindow {
-                until_ms: now_ms.saturating_add(window),
-            },
-            Effect::BeginCapture,
-        ),
-        Phase::StartWindow { .. } => (Phase::Idle, Effect::DiscardCapture),
-        Phase::Listening => (
-            Phase::Arming {
-                until_ms: now_ms.saturating_add(window),
-            },
-            Effect::None,
-        ),
-        Phase::Arming { .. } => (Phase::Idle, Effect::DiscardCapture),
+        Phase::Idle => (Phase::Listening { opener_down: true }, Effect::BeginCapture),
+        Phase::Listening { opener_down: true } => (phase, Effect::None),
+        Phase::Listening { opener_down: false } => {
+            (Phase::Holding { since_ms: now_ms }, Effect::None)
+        }
+        Phase::Holding { .. } => (phase, Effect::None),
         Phase::Transcribing => (Phase::Idle, Effect::CancelInFlight),
         Phase::Dispatching => (phase, Effect::None),
     }
 }
 
-pub fn on_tick(phase: Phase, now_ms: u64) -> (Phase, Effect) {
+pub fn on_up(phase: Phase, now_ms: u64, long_ms: u64) -> (Phase, Effect) {
+    let long_ms = long_ms.max(1);
     match phase {
-        Phase::StartWindow { until_ms } if now_ms >= until_ms => (Phase::Listening, Effect::None),
-        Phase::Arming { until_ms } if now_ms >= until_ms => {
-            (Phase::Transcribing, Effect::EndCapture)
+        Phase::Listening { opener_down: true } => {
+            (Phase::Listening { opener_down: false }, Effect::None)
+        }
+        Phase::Holding { since_ms } => {
+            if now_ms.saturating_sub(since_ms) >= long_ms {
+                (Phase::Idle, Effect::DiscardCapture)
+            } else {
+                (Phase::Transcribing, Effect::EndCapture)
+            }
+        }
+        _ => (phase, Effect::None),
+    }
+}
+
+pub fn on_tick(phase: Phase, now_ms: u64, long_ms: u64) -> (Phase, Effect) {
+    let long_ms = long_ms.max(1);
+    match phase {
+        Phase::Holding { since_ms } if now_ms.saturating_sub(since_ms) >= long_ms => {
+            (Phase::Idle, Effect::DiscardCapture)
         }
         _ => (phase, Effect::None),
     }
 }
 
 pub fn is_capturing(phase: Phase) -> bool {
-    matches!(
-        phase,
-        Phase::StartWindow { .. } | Phase::Listening | Phase::Arming { .. }
-    )
+    matches!(phase, Phase::Listening { .. } | Phase::Holding { .. })
 }
 
 pub fn title(phase: Phase) -> &'static str {
     match phase {
         Phase::Idle => "Ready",
-        Phase::StartWindow { .. } | Phase::Listening => "Listening",
-        Phase::Arming { .. } => "Confirming",
+        Phase::Listening { .. } => "Listening",
+        Phase::Holding { .. } => "Holding",
         Phase::Transcribing => "Transcribing",
         Phase::Dispatching => "Sending",
     }
@@ -83,9 +85,9 @@ pub fn title(phase: Phase) -> &'static str {
 pub fn hint(phase: Phase) -> &'static str {
     match phase {
         Phase::Idle => "Press once and speak.",
-        Phase::StartWindow { .. } => "Tap again now only if that press was a mistake.",
-        Phase::Listening => "Press once to send. Press twice to cancel.",
-        Phase::Arming { .. } => "Tap again to cancel.",
+        Phase::Listening { opener_down: true } => "Release, then press again to send.",
+        Phase::Listening { opener_down: false } => "Press to send. Hold that press to cancel.",
+        Phase::Holding { .. } => "Release to send. Keep holding to cancel.",
         Phase::Transcribing => "Working through the recording.",
         Phase::Dispatching => "Sending keys to the sim.",
     }
@@ -95,68 +97,68 @@ pub fn hint(phase: Phase) -> &'static str {
 mod tests {
     use super::*;
 
-    const DOUBLE: u64 = 320;
+    const LONG: u64 = 700;
 
     #[test]
-    fn first_press_opens_a_cancel_window_and_starts_capture() {
-        let (phase, effect) = on_press(Phase::Idle, 1_000, DOUBLE);
-        assert_eq!(phase, Phase::StartWindow { until_ms: 1_320 });
+    fn first_press_starts_capture_and_its_release_keeps_listening() {
+        let (phase, effect) = on_down(Phase::Idle, 1_000);
+        assert_eq!(phase, Phase::Listening { opener_down: true });
         assert_eq!(effect, Effect::BeginCapture);
-    }
-
-    #[test]
-    fn second_press_inside_the_opening_window_cancels() {
-        let (phase, _) = on_press(Phase::Idle, 1_000, DOUBLE);
-        let (phase, effect) = on_press(phase, 1_100, DOUBLE);
-        assert_eq!(phase, Phase::Idle);
-        assert_eq!(effect, Effect::DiscardCapture);
-    }
-
-    #[test]
-    fn opening_window_expires_into_listening_without_stopping_audio() {
-        let (phase, _) = on_press(Phase::Idle, 1_000, DOUBLE);
-        let (phase, effect) = on_tick(phase, 1_320);
-        assert_eq!(phase, Phase::Listening);
+        let (phase, effect) = on_up(phase, 1_080, LONG);
+        assert_eq!(phase, Phase::Listening { opener_down: false });
         assert_eq!(effect, Effect::None);
         assert!(is_capturing(phase));
     }
 
     #[test]
-    fn single_press_while_listening_arms_a_send() {
-        let (phase, effect) = on_press(Phase::Listening, 5_000, DOUBLE);
-        assert_eq!(phase, Phase::Arming { until_ms: 5_320 });
+    fn short_second_press_sends() {
+        let (phase, _) = on_down(Phase::Idle, 1_000);
+        let (phase, _) = on_up(phase, 1_080, LONG);
+        let (phase, effect) = on_down(phase, 2_000);
+        assert_eq!(phase, Phase::Holding { since_ms: 2_000 });
         assert_eq!(effect, Effect::None);
-    }
-
-    #[test]
-    fn second_press_while_arming_cancels() {
-        let (phase, _) = on_press(Phase::Listening, 5_000, DOUBLE);
-        let (phase, effect) = on_press(phase, 5_100, DOUBLE);
-        assert_eq!(phase, Phase::Idle);
-        assert_eq!(effect, Effect::DiscardCapture);
-    }
-
-    #[test]
-    fn arming_timer_starts_transcription() {
-        let (phase, _) = on_press(Phase::Listening, 5_000, DOUBLE);
-        let (phase, effect) = on_tick(phase, 5_319);
-        assert_eq!(phase, Phase::Arming { until_ms: 5_320 });
+        let (phase, effect) = on_tick(phase, 2_400, LONG);
+        assert_eq!(phase, Phase::Holding { since_ms: 2_000 });
         assert_eq!(effect, Effect::None);
-        let (phase, effect) = on_tick(phase, 5_320);
+        let (phase, effect) = on_up(phase, 2_400, LONG);
         assert_eq!(phase, Phase::Transcribing);
         assert_eq!(effect, Effect::EndCapture);
     }
 
     #[test]
+    fn holding_the_second_press_cancels_before_release() {
+        let (phase, _) = on_down(Phase::Idle, 1_000);
+        let (phase, _) = on_up(phase, 1_080, LONG);
+        let (phase, _) = on_down(phase, 2_000);
+        let (phase, effect) = on_tick(phase, 2_699, LONG);
+        assert_eq!(phase, Phase::Holding { since_ms: 2_000 });
+        assert_eq!(effect, Effect::None);
+        let (phase, effect) = on_tick(phase, 2_700, LONG);
+        assert_eq!(phase, Phase::Idle);
+        assert_eq!(effect, Effect::DiscardCapture);
+        let (phase, effect) = on_up(phase, 2_900, LONG);
+        assert_eq!(phase, Phase::Idle);
+        assert_eq!(effect, Effect::None);
+    }
+
+    #[test]
+    fn release_after_the_hold_still_cancels_if_the_tick_has_not_run() {
+        let (phase, _) = on_down(Phase::Listening { opener_down: false }, 2_000);
+        let (phase, effect) = on_up(phase, 2_700, LONG);
+        assert_eq!(phase, Phase::Idle);
+        assert_eq!(effect, Effect::DiscardCapture);
+    }
+
+    #[test]
     fn press_while_transcribing_cancels() {
-        let (phase, effect) = on_press(Phase::Transcribing, 9_000, DOUBLE);
+        let (phase, effect) = on_down(Phase::Transcribing, 9_000);
         assert_eq!(phase, Phase::Idle);
         assert_eq!(effect, Effect::CancelInFlight);
     }
 
     #[test]
     fn press_while_sending_is_ignored() {
-        let (phase, effect) = on_press(Phase::Dispatching, 9_000, DOUBLE);
+        let (phase, effect) = on_down(Phase::Dispatching, 9_000);
         assert_eq!(phase, Phase::Dispatching);
         assert_eq!(effect, Effect::None);
     }

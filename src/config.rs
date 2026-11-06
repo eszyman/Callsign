@@ -161,8 +161,13 @@ pub struct Config {
     #[serde(default = "default_ptt")]
     pub ptt: String,
     pub joystick: Option<JoyBind>,
-    #[serde(default = "default_double_tap")]
-    pub double_tap_ms: u64,
+    /// Keyboard key that always starts a command, even in Chat mode.
+    #[serde(default)]
+    pub command_ptt: String,
+    pub command_joystick: Option<JoyBind>,
+    /// How long the second press must be held before the line is dropped.
+    #[serde(default = "default_long_press")]
+    pub long_press_ms: u64,
     pub send_keys: bool,
     #[serde(default = "default_focus_title")]
     pub focus_title: String,
@@ -192,8 +197,8 @@ pub struct Config {
 fn default_ptt() -> String {
     "scrolllock".into()
 }
-fn default_double_tap() -> u64 {
-    320
+fn default_long_press() -> u64 {
+    700
 }
 fn default_focus_title() -> String {
     "IL-2".into()
@@ -229,7 +234,9 @@ impl Default for Config {
             mode: Mode::Chat,
             ptt: default_ptt(),
             joystick: None,
-            double_tap_ms: default_double_tap(),
+            command_ptt: String::new(),
+            command_joystick: None,
+            long_press_ms: default_long_press(),
             send_keys: false,
             focus_title: default_focus_title(),
             require_focus: true,
@@ -311,7 +318,7 @@ impl Config {
         if self.chat.profile >= self.chat.profiles.len() {
             self.chat.profile = 0;
         }
-        self.double_tap_ms = self.double_tap_ms.clamp(140, 600);
+        self.long_press_ms = self.long_press_ms.clamp(300, 1_500);
         self.max_record_ms = self.max_record_ms.clamp(3_000, 60_000);
         self.cue_volume = self.cue_volume.clamp(0.0, 0.4);
         self.silence_rms = self.silence_rms.clamp(0.0, 0.2);

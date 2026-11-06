@@ -1,0 +1,460 @@
+{
+  "commands": [
+    {
+      "id": 1,
+      "name": "Landing gear",
+      "group": "Flight",
+      "phrases": ["landing gear", "toggle gear"],
+      "sequence": "g",
+      "enabled": true
+    },
+    {
+      "id": 2,
+      "name": "Gear down",
+      "group": "Flight",
+      "phrases": ["gear down", "lower the gear"],
+      "sequence": "lctrl+g",
+      "enabled": true
+    },
+    {
+      "id": 3,
+      "name": "Gear up",
+      "group": "Flight",
+      "phrases": ["gear up", "raise the gear"],
+      "sequence": "lshift+g",
+      "enabled": true
+    },
+    {
+      "id": 4,
+      "name": "Gear emergency",
+      "group": "Flight",
+      "phrases": ["emergency gear", "gear emergency"],
+      "sequence": "lalt+g",
+      "enabled": true
+    },
+    {
+      "id": 5,
+      "name": "Flaps",
+      "group": "Flight",
+      "phrases": ["flaps", "toggle flaps"],
+      "sequence": "f",
+      "enabled": true
+    },
+    {
+      "id": 6,
+      "name": "Flaps down",
+      "group": "Flight",
+      "phrases": ["flaps down", "lower flaps"],
+      "sequence": "lctrl+f",
+      "enabled": true
+    },
+    {
+      "id": 7,
+      "name": "Flaps up",
+      "group": "Flight",
+      "phrases": ["flaps up", "raise flaps"],
+      "sequence": "lshift+f",
+      "enabled": true
+    },
+    {
+      "id": 8,
+      "name": "Air brakes",
+      "group": "Flight",
+      "phrases": ["air brakes", "speed brakes"],
+      "sequence": "b",
+      "enabled": true
+    },
+    {
+      "id": 9,
+      "name": "Air brakes extend",
+      "group": "Flight",
+      "phrases": ["extend air brakes", "air brakes out"],
+      "sequence": "lctrl+b",
+      "enabled": true
+    },
+    {
+      "id": 10,
+      "name": "Air brakes retract",
+      "group": "Flight",
+      "phrases": ["retract air brakes", "air brakes in"],
+      "sequence": "lshift+b",
+      "enabled": true
+    },
+    {
+      "id": 11,
+      "name": "Tail wheel",
+      "group": "Flight",
+      "phrases": ["tail wheel", "nose wheel"],
+      "sequence": "w",
+      "enabled": true
+    },
+    {
+      "id": 12,
+      "name": "Parking brake",
+      "group": "Flight",
+      "phrases": ["parking brake"],
+      "sequence": "lshift+w",
+      "enabled": true
+    },
+    {
+      "id": 13,
+      "name": "Canopy",
+      "group": "Flight",
+      "phrases": ["canopy", "open canopy", "close canopy"],
+      "sequence": "c",
+      "enabled": true
+    },
+    {
+      "id": 14,
+      "name": "Window",
+      "group": "Flight",
+      "phrases": ["side window", "open window", "close window"],
+      "sequence": "lalt+c",
+      "enabled": true
+    },
+    {
+      "id": 15,
+      "name": "Reset trims",
+      "group": "Flight",
+      "phrases": ["reset trims", "center trims"],
+      "sequence": "lctrl+t",
+      "enabled": true
+    },
+    {
+      "id": 16,
+      "name": "Autopilot",
+      "group": "Flight",
+      "phrases": ["autopilot"],
+      "sequence": "lalt+a",
+      "enabled": true
+    },
+    {
+      "id": 17,
+      "name": "Autohorizon",
+      "group": "Flight",
+      "phrases": ["autohorizon", "level flight"],
+      "sequence": "lshift+a",
+      "enabled": true
+    },
+    {
+      "id": 18,
+      "name": "Autoclimb",
+      "group": "Flight",
+      "phrases": ["autoclimb", "auto climb"],
+      "sequence": "lctrl+a",
+      "enabled": true
+    },
+    {
+      "id": 19,
+      "name": "Auto turn right",
+      "group": "Flight",
+      "phrases": ["auto turn right"],
+      "sequence": "lalt+x",
+      "enabled": true
+    },
+    {
+      "id": 20,
+      "name": "Auto turn left",
+      "group": "Flight",
+      "phrases": ["auto turn left"],
+      "sequence": "lalt+z",
+      "enabled": true
+    },
+    {
+      "id": 21,
+      "name": "Slight right",
+      "group": "Flight",
+      "phrases": ["slight right"],
+      "sequence": "lshift+x",
+      "enabled": true
+    },
+    {
+      "id": 22,
+      "name": "Slight left",
+      "group": "Flight",
+      "phrases": ["slight left"],
+      "sequence": "lshift+z",
+      "enabled": true
+    },
+    {
+      "id": 23,
+      "name": "Engine",
+      "group": "Engine",
+      "phrases": ["start engine", "stop engine", "toggle engine"],
+      "sequence": "e",
+      "enabled": true
+    },
+    {
+      "id": 24,
+      "name": "Throttle limiter",
+      "group": "Engine",
+      "phrases": ["throttle limiter", "rpm limiter"],
+      "sequence": "lwin+t",
+      "enabled": true
+    },
+    {
+      "id": 25,
+      "name": "Prop mixture helper",
+      "group": "Engine",
+      "phrases": ["prop mixture", "mixture helper", "supercharger helper"],
+      "sequence": "lwin+p",
+      "enabled": true
+    },
+    {
+      "id": 26,
+      "name": "Cooling shutters",
+      "group": "Engine",
+      "phrases": ["cooling shutters", "cowl shutters"],
+      "sequence": "lwin+c",
+      "enabled": true
+    },
+    {
+      "id": 27,
+      "name": "Engine boost",
+      "group": "Engine",
+      "phrases": ["emergency power", "war emergency power"],
+      "sequence": "lwin+b",
+      "enabled": true
+    },
+    {
+      "id": 28,
+      "name": "Jet boosters",
+      "group": "Engine",
+      "phrases": ["fire boosters", "jet boosters"],
+      "sequence": "j",
+      "enabled": false
+    },
+    {
+      "id": 29,
+      "name": "Jettison boosters",
+      "group": "Engine",
+      "phrases": ["jettison boosters", "drop boosters"],
+      "sequence": "rshift+j",
+      "enabled": false
+    },
+    {
+      "id": 30,
+      "name": "Refuel",
+      "group": "Engine",
+      "phrases": ["refuel", "start refueling"],
+      "sequence": "rshift+f",
+      "enabled": true
+    },
+    {
+      "id": 31,
+      "name": "Dump fuel",
+      "group": "Engine",
+      "phrases": ["dump fuel"],
+      "sequence": "ralt+f",
+      "enabled": false
+    },
+    {
+      "id": 32,
+      "name": "Drop tanks",
+      "group": "Weapons",
+      "phrases": ["drop tanks", "jettison tanks"],
+      "sequence": "lwin+f",
+      "enabled": false
+    },
+    {
+      "id": 33,
+      "name": "Cockpit lights",
+      "group": "Lights",
+      "phrases": ["cockpit lights"],
+      "sequence": "l",
+      "enabled": true
+    },
+    {
+      "id": 34,
+      "name": "Landing lights",
+      "group": "Lights",
+      "phrases": ["landing lights"],
+      "sequence": "rshift+l",
+      "enabled": true
+    },
+    {
+      "id": 35,
+      "name": "Taxi lights",
+      "group": "Lights",
+      "phrases": ["taxi lights"],
+      "sequence": "rctrl+l",
+      "enabled": true
+    },
+    {
+      "id": 36,
+      "name": "Navigation lights",
+      "group": "Lights",
+      "phrases": ["nav lights", "navigation lights"],
+      "sequence": "ralt+l",
+      "enabled": true
+    },
+    {
+      "id": 37,
+      "name": "Formation lights",
+      "group": "Lights",
+      "phrases": ["formation lights"],
+      "sequence": "lwin+l",
+      "enabled": true
+    },
+    {
+      "id": 38,
+      "name": "Code lights",
+      "group": "Lights",
+      "phrases": ["code lights"],
+      "sequence": "lalt+l",
+      "enabled": true
+    },
+    {
+      "id": 39,
+      "name": "Radio louder",
+      "group": "Radio",
+      "phrases": ["radio louder", "volume up"],
+      "sequence": "ralt+pageup",
+      "enabled": true
+    },
+    {
+      "id": 40,
+      "name": "Radio softer",
+      "group": "Radio",
+      "phrases": ["radio softer", "volume down"],
+      "sequence": "ralt+pagedown",
+      "enabled": true
+    },
+    {
+      "id": 41,
+      "name": "Nearest beacon",
+      "group": "Radio",
+      "phrases": ["nearest beacon"],
+      "sequence": "ralt+insert",
+      "enabled": true
+    },
+    {
+      "id": 42,
+      "name": "Compass next",
+      "group": "Radio",
+      "phrases": ["compass next"],
+      "sequence": "ralt+home",
+      "enabled": true
+    },
+    {
+      "id": 43,
+      "name": "Compass previous",
+      "group": "Radio",
+      "phrases": ["compass previous"],
+      "sequence": "ralt+end",
+      "enabled": true
+    },
+    {
+      "id": 44,
+      "name": "Drop bombs",
+      "group": "Weapons",
+      "phrases": ["drop bombs", "release bombs"],
+      "sequence": "lshift+space",
+      "enabled": false
+    },
+    {
+      "id": 45,
+      "name": "Launch rockets",
+      "group": "Weapons",
+      "phrases": ["launch rockets", "fire rockets"],
+      "sequence": "lctrl+space",
+      "enabled": false
+    },
+    {
+      "id": 46,
+      "name": "Jettison stores",
+      "group": "Weapons",
+      "phrases": ["jettison stores"],
+      "sequence": "ralt+j",
+      "enabled": false
+    },
+    {
+      "id": 47,
+      "name": "Bomb selector",
+      "group": "Weapons",
+      "phrases": ["bomb selector", "select bombs"],
+      "sequence": "lalt+b",
+      "enabled": false
+    },
+    {
+      "id": 48,
+      "name": "Rocket selector",
+      "group": "Weapons",
+      "phrases": ["rocket selector", "select rockets"],
+      "sequence": "lalt+r",
+      "enabled": false
+    },
+    {
+      "id": 49,
+      "name": "Bomb doors",
+      "group": "Weapons",
+      "phrases": ["bomb doors", "bomb bay", "open bomb bay"],
+      "sequence": "ralt+b",
+      "enabled": false
+    },
+    {
+      "id": 50,
+      "name": "Bomb fuses",
+      "group": "Weapons",
+      "phrases": ["bomb fuses"],
+      "sequence": "rctrl+b",
+      "enabled": false
+    },
+    {
+      "id": 51,
+      "name": "Master arm",
+      "group": "Weapons",
+      "phrases": ["master arm"],
+      "sequence": "rctrl+'",
+      "enabled": false
+    },
+    {
+      "id": 52,
+      "name": "Close fire range",
+      "group": "Gunner",
+      "phrases": ["close range", "gunner close"],
+      "sequence": "ralt+1",
+      "enabled": false
+    },
+    {
+      "id": 53,
+      "name": "Normal fire range",
+      "group": "Gunner",
+      "phrases": ["normal range", "gunner normal"],
+      "sequence": "ralt+2",
+      "enabled": false
+    },
+    {
+      "id": 54,
+      "name": "Far fire range",
+      "group": "Gunner",
+      "phrases": ["far range", "gunner far"],
+      "sequence": "ralt+3",
+      "enabled": false
+    },
+    {
+      "id": 55,
+      "name": "Return fire",
+      "group": "Gunner",
+      "phrases": ["return fire"],
+      "sequence": "ralt+5",
+      "enabled": false
+    },
+    {
+      "id": 56,
+      "name": "Attack ground",
+      "group": "Gunner",
+      "phrases": ["attack ground", "gunner ground"],
+      "sequence": "ralt+6",
+      "enabled": false
+    },
+    {
+      "id": 57,
+      "name": "Cease fire",
+      "group": "Gunner",
+      "phrases": ["cease fire"],
+      "sequence": "ralt+9",
+      "enabled": false
+    }
+  ]
+}

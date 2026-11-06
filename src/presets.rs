@@ -1,8 +1,9 @@
 //! Starter bindings from the IL-2 Great Battles printed defaults.
 //!
-//! Korea uses the same control map unless a squadron has rebound it. Weapon
-//! releases and the numbered radio slots start disabled: a near miss should
-//! not drop ordnance, and an unbound radio slot should not swallow chat.
+//! Korea uses a different keyboard. Import `commands/il2-korea.json` for that
+//! map. Weapon releases and the numbered radio slots start disabled: a near
+//! miss should not drop ordnance, and an unbound radio slot should not swallow
+//! chat.
 
 use crate::config::Command;
 

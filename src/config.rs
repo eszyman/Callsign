@@ -764,18 +764,58 @@ mod tests {
 
     #[test]
     fn korea_command_file_imports_and_its_keys_parse() {
-        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("commands/Korea-commands.json");
+        let path =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("commands/il2-korea.json");
         let imported = import_commands(&path).expect("Korea command file");
         assert!(!imported.repaired);
-        assert_eq!(imported.commands.len(), 321);
+        assert_eq!(imported.commands.len(), 57);
+        let mut names = std::collections::BTreeSet::new();
         for command in &imported.commands {
-            if command.sequence.trim().is_empty() {
-                continue;
+            assert!(
+                names.insert(command.name.clone()),
+                "duplicate name {}",
+                command.name
+            );
+            assert!(!command.phrases.is_empty(), "{}", command.name);
+            if command.group == "Weapons" || command.group == "Gunner" {
+                assert!(!command.enabled, "{} starts enabled", command.name);
             }
+            assert!(
+                !command.sequence.trim().is_empty(),
+                "{} has no keys",
+                command.name
+            );
             crate::keys::parse_sequence(&command.sequence)
                 .unwrap_or_else(|err| panic!("{} ({}) {err}", command.name, command.sequence));
         }
+        let by_name = |name: &str| {
+            imported
+                .commands
+                .iter()
+                .find(|command| command.name == name)
+                .unwrap_or_else(|| panic!("missing {name}"))
+        };
+        assert_eq!(by_name("Autopilot").sequence, "lalt+a");
+        assert_eq!(by_name("Landing gear").sequence, "g");
+        assert_eq!(by_name("Air brakes").sequence, "b");
+        assert_eq!(by_name("Drop bombs").sequence, "lshift+space");
+        assert_eq!(by_name("Master arm").sequence, "rctrl+'");
+        assert!(by_name("Landing gear").enabled);
+        for name in [
+            "Drop bombs",
+            "Launch rockets",
+            "Dump fuel",
+            "Drop tanks",
+            "Jet boosters",
+            "Jettison boosters",
+            "Cease fire",
+        ] {
+            assert!(!by_name(name).enabled, "{name}");
+        }
+        assert!(imported.commands.iter().all(|command| {
+            let name = command.name.to_lowercase();
+            !name.contains("bail") && !name.contains("eject") && !name.contains("trigger")
+        }));
     }
 
     #[test]

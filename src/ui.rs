@@ -470,32 +470,10 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             if ui.button("Add starter set").clicked() {
                 app.add_starter();
             }
-            let has_commands = !app.config.commands.is_empty();
-            if ui
-                .add_enabled(has_commands, egui::Button::new("Remove all"))
-                .clicked()
-            {
-                app.confirm_clear_commands = true;
-            }
             if ui.button("Export").clicked() {
                 app.export_commands();
             }
         });
-        if app.confirm_clear_commands && !app.config.commands.is_empty() {
-            ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new("Remove every command?")
-                        .color(theme::AMBER)
-                        .size(13.5),
-                );
-                if ui.button("Remove them").clicked() {
-                    app.clear_commands();
-                }
-                if ui.button("Keep").clicked() {
-                    app.confirm_clear_commands = false;
-                }
-            });
-        }
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             if ui.button("Browse").clicked() {

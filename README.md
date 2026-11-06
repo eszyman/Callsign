@@ -85,7 +85,7 @@ The file must be 16-bit PCM WAV.
 
 ## Where settings live
 
-Callsign writes its own config the first time you change something. On Linux that is under the user config directory (`callsign/config.json`, readable only by you). Commands can be exported and imported from the Commands page. A log of what was heard and sent is written next to the config.
+Callsign writes its own config the first time you change something. On Linux that is under the user config directory (`callsign/config.json`, readable only by you). Commands can be exported and imported from the Commands page. That page groups them by category and has a search box for the name, a phrase, or the keys. A log of what was heard and sent is written next to the config.
 
 ## Assumptions
 

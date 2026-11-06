@@ -4,7 +4,7 @@
 use egui::{Color32, CornerRadius, Layout, RichText, Stroke, TextStyle, Vec2};
 
 use crate::app::{CallsignApp, LogKind, Page};
-use crate::config::{Mode, SttEngine};
+use crate::config::{Command, Mode, SttEngine};
 use crate::cues::CueKind;
 use crate::keys;
 use crate::phase::{self, Phase};
@@ -500,15 +500,97 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             ui.label(RichText::new(&app.import_note).size(13.0).color(color));
         }
         ui.add_space(14.0);
+        ui.label(RichText::new("Search").size(12.0).color(theme::FAINT));
+        ui.add(
+            egui::TextEdit::singleline(&mut app.command_query)
+                .hint_text("Name, phrase, or keys")
+                .desired_width(f32::INFINITY),
+        );
         let mut groups: Vec<String> = Vec::new();
         for command in &app.config.commands {
             if !groups.iter().any(|group| group == &command.group) {
                 groups.push(command.group.clone());
             }
         }
-        groups.sort_by(|a, b| group_rank(a).cmp(&group_rank(b)).then(a.cmp(b)));
+        groups.sort_by(|a, b| {
+            group_rank(a)
+                .cmp(&group_rank(b))
+                .then_with(|| a.to_lowercase().cmp(&b.to_lowercase()))
+        });
+        if !app.command_category.is_empty()
+            && !groups.iter().any(|group| group == &app.command_category)
+        {
+            app.command_category.clear();
+        }
+        ui.add_space(6.0);
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Category").size(12.0).color(theme::FAINT));
+            let selected = if app.command_category.is_empty() {
+                "All categories".to_string()
+            } else {
+                app.command_category.clone()
+            };
+            egui::ComboBox::from_id_salt("command-category")
+                .selected_text(selected)
+                .width(220.0)
+                .show_ui(ui, |ui| {
+                    if ui
+                        .selectable_label(app.command_category.is_empty(), "All categories")
+                        .clicked()
+                    {
+                        app.command_category.clear();
+                    }
+                    for group in &groups {
+                        if ui
+                            .selectable_label(app.command_category == *group, group)
+                            .clicked()
+                        {
+                            app.command_category = group.clone();
+                        }
+                    }
+                });
+        });
+        let query = app.command_query.clone();
+        let category = app.command_category.clone();
+        let mut visible: Vec<(String, Vec<usize>)> = Vec::new();
+        for group in &groups {
+            if !category.is_empty() && group != &category {
+                continue;
+            }
+            let mut indexes: Vec<usize> = app
+                .config
+                .commands
+                .iter()
+                .enumerate()
+                .filter(|(_, command)| command.group == *group && command_matches(command, &query))
+                .map(|(index, _)| index)
+                .collect();
+            indexes.sort_by(|&left, &right| {
+                let commands = &app.config.commands;
+                commands[left]
+                    .name
+                    .to_lowercase()
+                    .cmp(&commands[right].name.to_lowercase())
+                    .then(commands[left].id.cmp(&commands[right].id))
+            });
+            if !indexes.is_empty() {
+                visible.push((group.clone(), indexes));
+            }
+        }
+        let shown: usize = visible.iter().map(|(_, indexes)| indexes.len()).sum();
+        let total = app.config.commands.len();
+        let count = if shown == total {
+            format!("{total} commands, grouped by category")
+        } else {
+            format!("{shown} of {total}, grouped by category")
+        };
+        ui.label(RichText::new(count).size(12.5).color(theme::MUTED));
+        if shown == 0 {
+            ui.label(RichText::new("No command matches that.").color(theme::FAINT));
+        }
+        let force_open = !query.trim().is_empty() && shown > 0 && shown <= 4;
         let mut remove: Option<u64> = None;
-        for group in groups {
+        for (group, indexes) in visible {
             ui.add_space(6.0);
             ui.label(
                 RichText::new(group.to_uppercase())
@@ -517,61 +599,120 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
                     .color(theme::FAINT),
             );
             ui.add_space(4.0);
-            let indexes: Vec<usize> = app
-                .config
-                .commands
-                .iter()
-                .enumerate()
-                .filter(|(_, command)| command.group == group)
-                .map(|(index, _)| index)
-                .collect();
             for index in indexes {
                 let id = app.config.commands[index].id;
+                let open = force_open || app.command_open.contains(&id);
                 ui.push_id(id, |ui| {
-                    theme::card().show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.checkbox(&mut app.config.commands[index].enabled, "Enabled");
-                            if ui.button("Remove").clicked() {
-                                remove = Some(id);
-                            }
-                        });
-                        labeled(ui, "Name", &mut app.config.commands[index].name);
-                        labeled(ui, "Group", &mut app.config.commands[index].group);
-                        ui.label(RichText::new("Phrases, one per line").size(12.0).color(theme::FAINT));
-                        let mut blob = app.config.commands[index].phrases.join("\n");
-                        let changed = ui
-                            .add(
-                                egui::TextEdit::multiline(&mut blob)
-                                    .desired_rows(3)
-                                    .desired_width(f32::INFINITY),
-                            )
-                            .changed();
-                        if changed {
-                            let phrases: Vec<String> = if blob.is_empty() {
-                                vec![String::new()]
-                            } else {
-                                blob.split('\n').map(|line| line.to_string()).collect()
-                            };
-                            app.config.commands[index].phrases = phrases;
-                        }
-                        labeled_mono(ui, "Keys", &mut app.config.commands[index].sequence);
-                        sequence_preview(ui, &app.config.commands[index].sequence);
-                        if app.config.commands[index].sequence.trim().is_empty() {
-                            ui.label(
-                                RichText::new("Unbound. A match is reported and nothing is typed.")
-                                    .size(12.5)
-                                    .color(theme::AMBER),
-                            );
-                        }
-                    });
+                    command_row(app, ui, index, open, force_open, &mut remove);
                 });
-                ui.add_space(8.0);
+                ui.add_space(6.0);
             }
         }
         if let Some(id) = remove {
             app.config.commands.retain(|command| command.id != id);
+            app.command_open.remove(&id);
         }
     });
+}
+
+fn command_row(
+    app: &mut CallsignApp,
+    ui: &mut egui::Ui,
+    index: usize,
+    open: bool,
+    force_open: bool,
+    remove: &mut Option<u64>,
+) {
+    let id = app.config.commands[index].id;
+    ui.horizontal(|ui| {
+        ui.checkbox(&mut app.config.commands[index].enabled, "");
+        let name = app.config.commands[index].name.clone();
+        let phrases = app.config.commands[index].phrases.join(", ");
+        ui.label(RichText::new(name).color(theme::TEXT))
+            .on_hover_text(phrases);
+        ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+            if !force_open && ui.button(if open { "Close" } else { "Edit" }).clicked() {
+                if open {
+                    app.command_open.remove(&id);
+                } else {
+                    app.command_open.insert(id);
+                }
+            }
+            ui.label(
+                RichText::new(command_keys(&app.config.commands[index].sequence))
+                    .size(12.5)
+                    .color(theme::MUTED),
+            );
+        });
+    });
+    if open {
+        theme::card().show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut app.config.commands[index].enabled, "Enabled");
+                if ui.button("Remove").clicked() {
+                    *remove = Some(id);
+                }
+            });
+            labeled(ui, "Name", &mut app.config.commands[index].name);
+            labeled(ui, "Group", &mut app.config.commands[index].group);
+            ui.label(
+                RichText::new("Phrases, one per line")
+                    .size(12.0)
+                    .color(theme::FAINT),
+            );
+            let mut blob = app.config.commands[index].phrases.join("\n");
+            let changed = ui
+                .add(
+                    egui::TextEdit::multiline(&mut blob)
+                        .desired_rows(3)
+                        .desired_width(f32::INFINITY),
+                )
+                .changed();
+            if changed {
+                let phrases: Vec<String> = if blob.is_empty() {
+                    vec![String::new()]
+                } else {
+                    blob.split('\n').map(|line| line.to_string()).collect()
+                };
+                app.config.commands[index].phrases = phrases;
+            }
+            labeled_mono(ui, "Keys", &mut app.config.commands[index].sequence);
+            sequence_preview(ui, &app.config.commands[index].sequence);
+            if app.config.commands[index].sequence.trim().is_empty() {
+                ui.label(
+                    RichText::new("Unbound. A match is reported and nothing is typed.")
+                        .size(12.5)
+                        .color(theme::AMBER),
+                );
+            }
+        });
+    }
+}
+
+fn command_keys(sequence: &str) -> String {
+    if sequence.trim().is_empty() {
+        return "unbound".into();
+    }
+    match keys::parse_sequence(sequence) {
+        Ok(steps) => keys::describe_sequence(&steps),
+        Err(_) => sequence.to_string(),
+    }
+}
+
+fn command_matches(command: &Command, query: &str) -> bool {
+    let query = query.trim().to_lowercase();
+    if query.is_empty() {
+        return true;
+    }
+    let haystack = format!(
+        "{} {} {} {}",
+        command.name,
+        command.group,
+        command.phrases.join(" "),
+        command.sequence
+    )
+    .to_lowercase();
+    query.split_whitespace().all(|word| haystack.contains(word))
 }
 
 fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
@@ -1084,5 +1225,32 @@ fn format_bytes(bytes: u64) -> String {
         format!("{:.0} KB", bytes as f64 / 1024.0)
     } else {
         format!("{bytes} B")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample(name: &str, group: &str, phrase: &str, sequence: &str) -> Command {
+        Command {
+            id: 1,
+            name: name.into(),
+            group: group.into(),
+            phrases: vec![phrase.into()],
+            sequence: sequence.into(),
+            enabled: true,
+        }
+    }
+
+    #[test]
+    fn search_finds_a_command_by_name_phrase_or_keys() {
+        let gear = sample("Landing gear", "Flight", "gear up", "g");
+        assert!(command_matches(&gear, ""));
+        assert!(command_matches(&gear, "  landing  "));
+        assert!(command_matches(&gear, "gear up"));
+        assert!(command_matches(&gear, "flight g"));
+        assert!(!command_matches(&gear, "flaps"));
+        assert!(!command_matches(&gear, "gear canopy"));
     }
 }

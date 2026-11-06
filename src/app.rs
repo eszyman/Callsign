@@ -1,6 +1,6 @@
 //! Window state: the gesture, the workers, and the saved settings.
 
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -79,6 +79,9 @@ pub struct CallsignApp {
     pub(crate) command_test: String,
     pub(crate) import_path: String,
     pub(crate) import_note: String,
+    pub(crate) command_query: String,
+    pub(crate) command_category: String,
+    pub(crate) command_open: HashSet<u64>,
     pub(crate) listen_stick: Option<StickCapture>,
     pub(crate) download: Option<DownloadView>,
     pub(crate) mic_names: Vec<String>,
@@ -151,6 +154,9 @@ impl CallsignApp {
             command_test: String::new(),
             import_path: String::new(),
             import_note: String::new(),
+            command_query: String::new(),
+            command_category: String::new(),
+            command_open: HashSet::new(),
             listen_stick: None,
             download: None,
             mic_names,

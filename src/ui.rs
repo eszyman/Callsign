@@ -209,7 +209,13 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
         .corner_radius(12)
         .min_size(Vec2::new(width, 56.0));
         let response = ui.add_enabled(enabled, button);
-        app.note_screen_button(response.is_pointer_button_down_on());
+        let mouse_down = ui.input(|input| input.pointer.primary_down());
+        let down = screen_button_down(
+            app.screen_owns_gesture(),
+            response.is_pointer_button_down_on(),
+            mouse_down,
+        );
+        app.note_screen_button(down);
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             let capturing = phase::is_capturing(app.phase);
@@ -1244,6 +1250,16 @@ fn segment(ui: &mut egui::Ui, mode: &mut Mode) {
     });
 }
 
+/// egui drops a click after 0.8 seconds, while the mouse button is still down.
+/// Once the gesture belongs to the desk button, the mouse button is what counts.
+fn screen_button_down(owns_press: bool, widget_down: bool, mouse_down: bool) -> bool {
+    if owns_press {
+        mouse_down
+    } else {
+        widget_down
+    }
+}
+
 fn meter(ui: &mut egui::Ui, rms: f32) {
     let gained = (rms * 8.0).clamp(0.0, 1.0);
     let level = gained.powf(0.65);
@@ -1408,6 +1424,15 @@ mod tests {
             sequence: sequence.into(),
             enabled: true,
         }
+    }
+
+    #[test]
+    fn desk_button_stays_down_after_egui_forgets_the_click() {
+        // Widget says up, mouse is still held, and this press started on the desk button.
+        assert!(screen_button_down(true, false, true));
+        assert!(!screen_button_down(true, false, false));
+        assert!(screen_button_down(false, true, true));
+        assert!(!screen_button_down(false, false, true));
     }
 
     #[test]

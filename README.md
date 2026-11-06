@@ -20,8 +20,8 @@ Chat and Commands each have a gesture. Chat and Mixed start on **Press twice**. 
 
 **Hold to talk**
 
-1. **Hold and speak.** The recording stays open for the whole press.
-2. **Release to send.** Callsign waits until the button has stayed up, so a flicker does not cut the line off while you are still holding it.
+1. **Hold and speak.**
+2. **Release to send.**
 
 A recording longer than 30 seconds sends itself. The Cancel button on the desk still drops a line that is already being transcribed.
 

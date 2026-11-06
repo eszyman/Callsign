@@ -82,6 +82,7 @@ pub struct CallsignApp {
     pub(crate) command_query: String,
     pub(crate) command_category: String,
     pub(crate) command_open: HashSet<u64>,
+    pub(crate) confirm_clear_commands: bool,
     pub(crate) listen_stick: Option<StickCapture>,
     pub(crate) download: Option<DownloadView>,
     pub(crate) mic_names: Vec<String>,
@@ -157,6 +158,7 @@ impl CallsignApp {
             command_query: String::new(),
             command_category: String::new(),
             command_open: HashSet::new(),
+            confirm_clear_commands: false,
             listen_stick: None,
             download: None,
             mic_names,
@@ -321,6 +323,15 @@ impl CallsignApp {
             sequence: String::new(),
             enabled: false,
         });
+    }
+
+    pub(crate) fn clear_commands(&mut self) {
+        let count = self.config.commands.len();
+        self.config.commands.clear();
+        self.command_open.clear();
+        self.command_category.clear();
+        self.confirm_clear_commands = false;
+        self.push_log(LogKind::System, format!("Removed {count} commands."));
     }
 
     pub(crate) fn add_starter(&mut self) {

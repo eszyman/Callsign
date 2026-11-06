@@ -72,13 +72,21 @@ fn install_fonts(ctx: &egui::Context) {
 }
 
 fn install_visuals(ctx: &egui::Context) {
+    // A light OS theme would otherwise swap in egui's light widgets, whose
+    // hovered foreground is black. Stay on the instrument palette.
+    ctx.set_theme(egui::ThemePreference::Dark);
+
     let mut visuals = egui::Visuals::dark();
     visuals.window_fill = BG;
     visuals.panel_fill = BG;
     visuals.extreme_bg_color = Color32::from_rgb(0x10, 0x12, 0x0e);
     visuals.faint_bg_color = SURFACE;
     visuals.code_bg_color = SURFACE;
-    visuals.override_text_color = Some(TEXT);
+    // Leave override_text_color unset. egui 0.37 bakes it into widget text, so
+    // checkboxes and selectable labels would ignore the hovered foreground and
+    // a placeholder interact color can come out black. With it unset, plain
+    // text stays a placeholder and takes fg_stroke: cream at rest, amber on hover.
+    visuals.override_text_color = None;
     visuals.hyperlink_color = AMBER;
     visuals.window_stroke = Stroke::new(1.0, LINE);
     visuals.selection.bg_fill = AMBER_DIM;
@@ -97,12 +105,26 @@ fn install_visuals(ctx: &egui::Context) {
     }
     visuals.widgets.noninteractive.bg_fill = SURFACE;
     visuals.widgets.inactive.bg_fill = SURFACE_2;
-    visuals.widgets.hovered.bg_fill = Color32::from_rgb(0x32, 0x38, 0x2a);
+    visuals.widgets.hovered.bg_fill = AMBER_DIM;
+    visuals.widgets.hovered.weak_bg_fill = AMBER_DIM;
+    visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, AMBER);
+    visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, AMBER);
     visuals.widgets.active.bg_fill = Color32::from_rgb(0x3d, 0x44, 0x32);
-    visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, MUTED);
-    ctx.set_visuals(visuals);
+    visuals.widgets.active.fg_stroke = Stroke::new(1.0, AMBER);
+    visuals.widgets.open.fg_stroke = Stroke::new(1.0, AMBER);
+    // Body copy uses the noninteractive foreground. Keep it cream, not muted.
+    visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, TEXT);
+    ctx.set_visuals_of(egui::Theme::Dark, visuals.clone());
+    ctx.set_visuals_of(egui::Theme::Light, visuals);
 
     ctx.all_styles_mut(|style| {
+        // Solid bars allocate width, so fields and Edit buttons sit clear of the thumb.
+        let mut scroll = egui::style::ScrollStyle::solid();
+        scroll.bar_width = 8.0;
+        scroll.bar_inner_margin = 12.0;
+        scroll.bar_outer_margin = 2.0;
+        scroll.handle_min_length = 28.0;
+        style.spacing.scroll = scroll;
         style.spacing.item_spacing = egui::vec2(10.0, 8.0);
         style.spacing.button_padding = egui::vec2(12.0, 7.0);
         style
@@ -146,5 +168,30 @@ pub fn app_icon() -> egui::IconData {
         rgba,
         width,
         height,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AMBER, TEXT};
+
+    #[test]
+    fn hover_labels_are_amber_and_scrollbars_reserve_a_gap() {
+        let ctx = egui::Context::default();
+        super::install(&ctx);
+        assert_eq!(ctx.theme(), egui::Theme::Dark);
+        for theme in [egui::Theme::Dark, egui::Theme::Light] {
+            let style = ctx.style_of(theme);
+            let visuals = &style.visuals;
+            assert_eq!(visuals.override_text_color, None);
+            assert_eq!(visuals.widgets.noninteractive.fg_stroke.color, TEXT);
+            assert_eq!(visuals.widgets.inactive.fg_stroke.color, TEXT);
+            assert_eq!(visuals.widgets.hovered.fg_stroke.color, AMBER);
+            assert_eq!(visuals.widgets.active.fg_stroke.color, AMBER);
+            assert_eq!(visuals.widgets.open.fg_stroke.color, AMBER);
+            assert!(!style.spacing.scroll.floating);
+            assert!(style.spacing.scroll.bar_inner_margin >= 8.0);
+            assert!(style.spacing.scroll.allocated_width() >= 16.0);
+        }
     }
 }

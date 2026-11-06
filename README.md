@@ -1,6 +1,6 @@
 # Callsign
 
-Callsign is a desktop companion for **IL-2 Sturmovik** (Great Battles, including Korea). It sits beside the simulator. Press a button, speak, then press again to send. It can type a chat line, or turn a short phrase into the keys the sim already uses for the radio, gear, flaps, and the rest of the cockpit.
+Callsign is a desktop companion for **IL-2 Sturmovik** (Great Battles, including Korea). It sits beside the simulator. Press a button and speak. It can type a chat line, or turn a short phrase into the keys the sim already uses for the radio, gear, flaps, and the rest of the cockpit.
 
 It is not an overlay inside the headset. The microphone is the PC input (a headset mic that the operating system can see works, including some VR mics). Cue tones play on the default output, which SteamVR usually mirrors into the headset.
 
@@ -10,10 +10,22 @@ Key output starts **off**. Until you turn it on in Setup, Callsign only shows wh
 
 Scroll Lock is the default talk key, because IL-2 rarely wants it. A joystick or HOTAS button can be bound as well, and the on-screen Talk button does the same thing. A second key, and a second stick button, can be set to always run Commands even when the header is on Chat.
 
+Chat and Commands each have a gesture. Chat and Mixed start on **Press twice**. Commands starts on **Hold to talk**, so a short order can go out on the release.
+
+**Press twice**
+
 1. **Press once and speak.** Releasing that press keeps listening. A short tick means the next press will send.
 2. **Press again to send.**
 3. **Hold that second press** (about 700 ms) **to cancel** before the line is transcribed. That is the way out of a stumble.
-4. A recording longer than 30 seconds sends itself. The Cancel button on the desk still drops a line that is already being transcribed.
+
+**Hold to talk**
+
+1. **Hold and speak.**
+2. **Release to send.**
+
+A recording longer than 30 seconds sends itself. The Cancel button on the desk still drops a line that is already being transcribed.
+
+Command macros wait between keys (100 ms unless you change it) so a sequence such as Tab, 0, 8 can open a radio menu. A slider on the Commands page sets that gap, and another sets a wait before the first key. A sequence that already contains `delay:120` keeps that wait.
 
 While you are typing in Callsign's own fields, the keyboard talk button is released so the key can be typed.
 
@@ -22,7 +34,7 @@ While you are typing in Callsign's own fields, the keyboard talk button is relea
 The header switches three modes:
 
 - **Chat** types the transcript into the active channel. All pilots opens with Enter. Friendly chat opens with Right Ctrl+Enter. The line is cleaned up (control characters, Whisper's silence tags, a 160 character cap) and then typed.
-- **Commands** matches the words, in order, to a phrase on the Commands page and presses that key sequence. "Gear up" presses G. A phrase with no keys is reported and nothing is typed. Short words such as "up" and "down" have to be exact. Longer words allow a small mishear.
+- **Commands** matches the words, in order, to a phrase on the Commands page and presses that key sequence. "Gear up" presses G. "Request landing" can press Tab, then 0, then 8, with a short wait between them. A phrase with no keys is reported and nothing is typed. Short words such as "up" and "down" have to be exact. Longer words allow a small mishear.
 - **Mixed** treats a line as a command only when it is almost nothing but the command. A sentence goes to chat. An unbound command is reported rather than typed into chat.
 
 Weapons start disabled, and eject and the gun trigger are not in the list. A misheard word should not drop ordnance. The printed Great Battles defaults are a starting point. Korea uses that map unless you have changed it. Open Controls in the sim and check the keys before you enable key output.

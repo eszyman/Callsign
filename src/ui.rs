@@ -4,7 +4,7 @@
 use egui::{Color32, CornerRadius, Layout, RichText, Stroke, TextStyle, Vec2};
 
 use crate::app::{CallsignApp, LogKind, Page};
-use crate::config::{Command, Mode, SttEngine};
+use crate::config::{Command, Gesture, Mode, SttEngine};
 use crate::cues::CueKind;
 use crate::keys;
 use crate::phase::{self, Phase};
@@ -175,7 +175,7 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
                         .color(theme::TEXT),
                 );
                 ui.label(
-                    RichText::new(phase::hint(app.phase))
+                    RichText::new(phase::hint(app.phase, app.shown_gesture() == Gesture::Hold))
                         .color(theme::MUTED)
                         .size(13.5),
                 );
@@ -195,7 +195,8 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
             ui.label(RichText::new(err).size(12.5).color(theme::RED));
         }
         ui.add_space(14.0);
-        let (label, fill, ink, enabled) = talk_style(app.phase);
+        let hold = app.shown_gesture() == Gesture::Hold;
+        let (label, fill, ink, enabled) = talk_style(app.phase, hold);
         let width = ui.available_width();
         let button = egui::Button::new(
             RichText::new(label)
@@ -227,7 +228,7 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
             }
         });
         ui.add_space(16.0);
-        gesture_strip(ui);
+        gesture_strip(ui, app.shown_gesture() == Gesture::Hold);
     });
     ui.add_space(12.0);
     theme::card().show(ui, |ui| {
@@ -427,6 +428,16 @@ fn chat_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             ui.add(egui::Slider::new(&mut app.config.chat.after_open_ms, 40u64..=400).text("ms after opening chat"));
         });
         ui.add(egui::Slider::new(&mut app.config.chat.max_chars, 40usize..=240).text("character cap"));
+        ui.add_space(10.0);
+        ui.label(RichText::new("Talk button").size(12.0).color(theme::FAINT));
+        gesture_picker(ui, &mut app.config.chat_gesture);
+        ui.label(
+            RichText::new(
+                "Press twice is press, speak, press again. Hold to talk sends when you let go. Mixed uses this too. The commands button has its own.",
+            )
+            .size(12.5)
+            .color(theme::MUTED),
+        );
         ui.add_space(8.0);
         let idle = app.phase == Phase::Idle;
         if ui
@@ -446,6 +457,32 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             RichText::new(
                 "A phrase matches when its words show up in order. Short words have to be exact. These keys are the printed IL-2 Great Battles defaults — open Controls in the sim and check them before you turn key output on. Weapons start off: a misheard word should not drop ordnance. Eject and the gun trigger are not in this list.",
             )
+            .color(theme::MUTED),
+        );
+        ui.add_space(10.0);
+        ui.label(RichText::new("Commands button").size(12.0).color(theme::FAINT));
+        gesture_picker(ui, &mut app.config.command_gesture);
+        ui.label(
+            RichText::new(
+                "Hold to talk is the quick one: hold, speak, release. Press twice matches chat, and a long second press still cancels. The header Commands mode uses this for the talk button too.",
+            )
+            .size(12.5)
+            .color(theme::MUTED),
+        );
+        ui.add_space(8.0);
+        ui.add(
+            egui::Slider::new(&mut app.config.command_gap_ms, 0u64..=300)
+                .text("ms between keys"),
+        );
+        ui.add(
+            egui::Slider::new(&mut app.config.command_lead_ms, 0u64..=400)
+                .text("ms before the first key"),
+        );
+        ui.label(
+            RichText::new(
+                "Tab, 0, 8 needs a beat between keys so the radio menu can open. A key sequence that already says delay:120 keeps that wait. A single key ignores the gap.",
+            )
+            .size(12.5)
             .color(theme::MUTED),
         );
         ui.add_space(10.0);
@@ -1013,14 +1050,21 @@ fn download_row(app: &mut CallsignApp, ui: &mut egui::Ui) {
     });
 }
 
-fn gesture_strip(ui: &mut egui::Ui) {
-    let steps = [
-        ("1", "Press and speak"),
-        ("2", "Press to send"),
-        ("3", "Hold to cancel"),
-    ];
+fn gesture_strip(ui: &mut egui::Ui, hold: bool) {
+    let steps = if hold {
+        [("1", "Hold and speak"), ("2", "Release to send"), ("", "")]
+    } else {
+        [
+            ("1", "Press and speak"),
+            ("2", "Press to send"),
+            ("3", "Hold to cancel"),
+        ]
+    };
     ui.horizontal(|ui| {
         for (number, label) in steps {
+            if number.is_empty() {
+                continue;
+            }
             ui.label(
                 RichText::new(number)
                     .font(theme::display_font(18.0))
@@ -1030,13 +1074,37 @@ fn gesture_strip(ui: &mut egui::Ui) {
             ui.add_space(8.0);
         }
     });
-    ui.label(
-        RichText::new(
-            "A short tick means the next press will send. Hold that press and the line is dropped.",
-        )
-        .size(12.0)
-        .color(theme::FAINT),
-    );
+    let note = if hold {
+        "Let go when the phrase is finished. Cancel still drops a line that is being transcribed."
+    } else {
+        "A short tick means the next press will send. Hold that press and the line is dropped."
+    };
+    ui.label(RichText::new(note).size(12.0).color(theme::FAINT));
+}
+
+fn gesture_picker(ui: &mut egui::Ui, gesture: &mut Gesture) {
+    ui.horizontal(|ui| {
+        for choice in [Gesture::Tap, Gesture::Hold] {
+            let on = *gesture == choice;
+            let fill = if on { theme::AMBER_DIM } else { theme::SURFACE };
+            let ink = if on { theme::AMBER } else { theme::MUTED };
+            if ui
+                .add(
+                    egui::Button::new(RichText::new(choice.label()).color(ink).size(13.5))
+                        .fill(fill)
+                        .stroke(Stroke::new(
+                            1.0,
+                            if on { theme::AMBER } else { theme::LINE },
+                        ))
+                        .corner_radius(8)
+                        .min_size(Vec2::new(0.0, 32.0)),
+                )
+                .clicked()
+            {
+                *gesture = choice;
+            }
+        }
+    });
 }
 
 fn sequence_preview(ui: &mut egui::Ui, sequence: &str) {
@@ -1140,10 +1208,16 @@ fn lamp_color(phase: Phase) -> Color32 {
     }
 }
 
-fn talk_style(phase: Phase) -> (&'static str, Color32, Color32, bool) {
+fn talk_style(phase: Phase, hold: bool) -> (&'static str, Color32, Color32, bool) {
     let ink = Color32::from_rgb(0x1a, 0x14, 0x04);
     match phase {
         Phase::Idle => ("Talk", theme::AMBER, ink, true),
+        Phase::Listening { .. } if hold => (
+            "Release",
+            theme::GREEN,
+            Color32::from_rgb(0x14, 0x18, 0x0c),
+            true,
+        ),
         Phase::Listening { .. } => (
             "Send",
             theme::GREEN,

@@ -41,7 +41,15 @@ pub fn on_down(phase: Phase, now_ms: u64) -> (Phase, Effect) {
     }
 }
 
-pub fn on_up(phase: Phase, now_ms: u64, long_ms: u64) -> (Phase, Effect) {
+pub fn on_up(phase: Phase, now_ms: u64, long_ms: u64, hold: bool) -> (Phase, Effect) {
+    if hold {
+        return match phase {
+            Phase::Listening { .. } | Phase::Holding { .. } => {
+                (Phase::Transcribing, Effect::EndCapture)
+            }
+            _ => (phase, Effect::None),
+        };
+    }
     let long_ms = long_ms.max(1);
     match phase {
         Phase::Listening { opener_down: true } => {
@@ -58,7 +66,10 @@ pub fn on_up(phase: Phase, now_ms: u64, long_ms: u64) -> (Phase, Effect) {
     }
 }
 
-pub fn on_tick(phase: Phase, now_ms: u64, long_ms: u64) -> (Phase, Effect) {
+pub fn on_tick(phase: Phase, now_ms: u64, long_ms: u64, hold: bool) -> (Phase, Effect) {
+    if hold {
+        return (phase, Effect::None);
+    }
     let long_ms = long_ms.max(1);
     match phase {
         Phase::Holding { since_ms } if now_ms.saturating_sub(since_ms) >= long_ms => {
@@ -82,7 +93,15 @@ pub fn title(phase: Phase) -> &'static str {
     }
 }
 
-pub fn hint(phase: Phase) -> &'static str {
+pub fn hint(phase: Phase, hold: bool) -> &'static str {
+    if hold {
+        return match phase {
+            Phase::Idle => "Hold to speak. Release to send.",
+            Phase::Listening { .. } | Phase::Holding { .. } => "Release to send.",
+            Phase::Transcribing => "Working through the recording.",
+            Phase::Dispatching => "Sending keys to the sim.",
+        };
+    }
     match phase {
         Phase::Idle => "Press once and speak.",
         Phase::Listening { opener_down: true } => "Release, then press again to send.",
@@ -98,13 +117,14 @@ mod tests {
     use super::*;
 
     const LONG: u64 = 700;
+    const TAP: bool = false;
 
     #[test]
     fn first_press_starts_capture_and_its_release_keeps_listening() {
         let (phase, effect) = on_down(Phase::Idle, 1_000);
         assert_eq!(phase, Phase::Listening { opener_down: true });
         assert_eq!(effect, Effect::BeginCapture);
-        let (phase, effect) = on_up(phase, 1_080, LONG);
+        let (phase, effect) = on_up(phase, 1_080, LONG, TAP);
         assert_eq!(phase, Phase::Listening { opener_down: false });
         assert_eq!(effect, Effect::None);
         assert!(is_capturing(phase));
@@ -113,14 +133,14 @@ mod tests {
     #[test]
     fn short_second_press_sends() {
         let (phase, _) = on_down(Phase::Idle, 1_000);
-        let (phase, _) = on_up(phase, 1_080, LONG);
+        let (phase, _) = on_up(phase, 1_080, LONG, TAP);
         let (phase, effect) = on_down(phase, 2_000);
         assert_eq!(phase, Phase::Holding { since_ms: 2_000 });
         assert_eq!(effect, Effect::None);
-        let (phase, effect) = on_tick(phase, 2_400, LONG);
+        let (phase, effect) = on_tick(phase, 2_400, LONG, TAP);
         assert_eq!(phase, Phase::Holding { since_ms: 2_000 });
         assert_eq!(effect, Effect::None);
-        let (phase, effect) = on_up(phase, 2_400, LONG);
+        let (phase, effect) = on_up(phase, 2_400, LONG, TAP);
         assert_eq!(phase, Phase::Transcribing);
         assert_eq!(effect, Effect::EndCapture);
     }
@@ -128,15 +148,15 @@ mod tests {
     #[test]
     fn holding_the_second_press_cancels_before_release() {
         let (phase, _) = on_down(Phase::Idle, 1_000);
-        let (phase, _) = on_up(phase, 1_080, LONG);
+        let (phase, _) = on_up(phase, 1_080, LONG, TAP);
         let (phase, _) = on_down(phase, 2_000);
-        let (phase, effect) = on_tick(phase, 2_699, LONG);
+        let (phase, effect) = on_tick(phase, 2_699, LONG, TAP);
         assert_eq!(phase, Phase::Holding { since_ms: 2_000 });
         assert_eq!(effect, Effect::None);
-        let (phase, effect) = on_tick(phase, 2_700, LONG);
+        let (phase, effect) = on_tick(phase, 2_700, LONG, TAP);
         assert_eq!(phase, Phase::Idle);
         assert_eq!(effect, Effect::DiscardCapture);
-        let (phase, effect) = on_up(phase, 2_900, LONG);
+        let (phase, effect) = on_up(phase, 2_900, LONG, TAP);
         assert_eq!(phase, Phase::Idle);
         assert_eq!(effect, Effect::None);
     }
@@ -144,7 +164,7 @@ mod tests {
     #[test]
     fn release_after_the_hold_still_cancels_if_the_tick_has_not_run() {
         let (phase, _) = on_down(Phase::Listening { opener_down: false }, 2_000);
-        let (phase, effect) = on_up(phase, 2_700, LONG);
+        let (phase, effect) = on_up(phase, 2_700, LONG, TAP);
         assert_eq!(phase, Phase::Idle);
         assert_eq!(effect, Effect::DiscardCapture);
     }
@@ -161,5 +181,17 @@ mod tests {
         let (phase, effect) = on_down(Phase::Dispatching, 9_000);
         assert_eq!(phase, Phase::Dispatching);
         assert_eq!(effect, Effect::None);
+    }
+
+    #[test]
+    fn hold_to_talk_sends_on_release_and_does_not_cancel_while_held() {
+        let (phase, effect) = on_down(Phase::Idle, 1_000);
+        assert_eq!(effect, Effect::BeginCapture);
+        let (phase, effect) = on_tick(phase, 4_000, LONG, true);
+        assert_eq!(phase, Phase::Listening { opener_down: true });
+        assert_eq!(effect, Effect::None);
+        let (phase, effect) = on_up(phase, 4_100, LONG, true);
+        assert_eq!(phase, Phase::Transcribing);
+        assert_eq!(effect, Effect::EndCapture);
     }
 }

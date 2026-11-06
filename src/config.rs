@@ -22,6 +22,31 @@ impl Default for Mode {
     }
 }
 
+/// How a press becomes a recording.
+///
+/// Tap is press, speak, press again. Hold is press and speak, then release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Gesture {
+    Tap,
+    Hold,
+}
+
+impl Default for Gesture {
+    fn default() -> Self {
+        Self::Tap
+    }
+}
+
+impl Gesture {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Tap => "Press twice",
+            Self::Hold => "Hold to talk",
+        }
+    }
+}
+
 impl Mode {
     pub fn label(self) -> &'static str {
         match self {
@@ -168,6 +193,18 @@ pub struct Config {
     /// How long the second press must be held before the line is dropped.
     #[serde(default = "default_long_press")]
     pub long_press_ms: u64,
+    /// Talk button gesture in Chat and Mixed.
+    #[serde(default = "default_chat_gesture")]
+    pub chat_gesture: Gesture,
+    /// Commands button gesture, and the talk button while the header is Commands.
+    #[serde(default = "default_command_gesture")]
+    pub command_gesture: Gesture,
+    /// Wait inserted between command keys that are not already spaced.
+    #[serde(default = "default_command_gap")]
+    pub command_gap_ms: u64,
+    /// Wait before the first key of a command.
+    #[serde(default)]
+    pub command_lead_ms: u64,
     pub send_keys: bool,
     #[serde(default = "default_focus_title")]
     pub focus_title: String,
@@ -199,6 +236,15 @@ fn default_ptt() -> String {
 }
 fn default_long_press() -> u64 {
     700
+}
+fn default_chat_gesture() -> Gesture {
+    Gesture::Tap
+}
+fn default_command_gesture() -> Gesture {
+    Gesture::Hold
+}
+fn default_command_gap() -> u64 {
+    100
 }
 fn default_focus_title() -> String {
     "IL-2".into()
@@ -237,6 +283,10 @@ impl Default for Config {
             command_ptt: String::new(),
             command_joystick: None,
             long_press_ms: default_long_press(),
+            chat_gesture: default_chat_gesture(),
+            command_gesture: default_command_gesture(),
+            command_gap_ms: default_command_gap(),
+            command_lead_ms: 0,
             send_keys: false,
             focus_title: default_focus_title(),
             require_focus: true,
@@ -319,6 +369,8 @@ impl Config {
             self.chat.profile = 0;
         }
         self.long_press_ms = self.long_press_ms.clamp(300, 1_500);
+        self.command_gap_ms = self.command_gap_ms.min(400);
+        self.command_lead_ms = self.command_lead_ms.min(600);
         self.max_record_ms = self.max_record_ms.clamp(3_000, 60_000);
         self.cue_volume = self.cue_volume.clamp(0.0, 0.4);
         self.silence_rms = self.silence_rms.clamp(0.0, 0.2);

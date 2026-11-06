@@ -23,6 +23,8 @@ pub struct PlanInput<'a> {
     pub token_floor: f64,
     pub command_max_extra: usize,
     pub mixed_max_extra: usize,
+    pub command_gap_ms: u64,
+    pub command_lead_ms: u64,
     pub practice: bool,
 }
 
@@ -112,6 +114,7 @@ fn plan_command(input: &PlanInput<'_>, suggest: bool) -> Dispatch {
         Ok(steps) => steps,
         Err(err) => return fail(&command.name, &err),
     };
+    let steps = pace_command(steps, input.command_lead_ms, input.command_gap_ms);
     if steps.is_empty() {
         return Dispatch {
             headline: format!("{} isn't bound", command.name),
@@ -133,6 +136,29 @@ fn plan_command(input: &PlanInput<'_>, suggest: bool) -> Dispatch {
         cue: CueKind::CommandSent,
         ok: true,
     }
+}
+
+/// A radio macro such as Tab, 0, 8 needs a beat between keys. An explicit
+/// `delay:` in the sequence is left alone. The lead wait sits in front.
+fn pace_command(steps: Vec<Step>, lead_ms: u64, gap_ms: u64) -> Vec<Step> {
+    if steps.is_empty() {
+        return steps;
+    }
+    let mut paced = Vec::with_capacity(steps.len() * 2 + 1);
+    if lead_ms > 0 {
+        paced.push(Step::Delay { ms: lead_ms });
+    }
+    for (index, step) in steps.iter().enumerate() {
+        let chord = matches!(step, Step::Chord { .. });
+        paced.push(step.clone());
+        if gap_ms == 0 || !chord {
+            continue;
+        }
+        if matches!(steps.get(index + 1), Some(Step::Chord { .. })) {
+            paced.push(Step::Delay { ms: gap_ms });
+        }
+    }
+    paced
 }
 
 fn suggest_or_fail(input: &PlanInput<'_>, entries: &[Entry<'_>]) -> Dispatch {
@@ -168,7 +194,7 @@ fn fail(headline: &str, detail: &str) -> Dispatch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ChatSettings, Config};
+    use crate::config::{ChatSettings, Command, Config};
 
     fn input<'a>(mode: Mode, text: &'a str, config: &'a Config, practice: bool) -> PlanInput<'a> {
         PlanInput {
@@ -179,6 +205,8 @@ mod tests {
             token_floor: config.token_floor,
             command_max_extra: config.command_max_extra,
             mixed_max_extra: config.mixed_max_extra,
+            command_gap_ms: config.command_gap_ms,
+            command_lead_ms: config.command_lead_ms,
             practice,
         }
     }
@@ -221,6 +249,44 @@ mod tests {
 
         let command = plan_action(&input(Mode::Mixed, "flaps up", &config, false));
         assert_eq!(command.headline, "Flaps up");
+    }
+
+    #[test]
+    fn command_macro_waits_between_keys_and_before_the_first() {
+        let mut config = Config::default();
+        config.command_lead_ms = 40;
+        config.command_gap_ms = 80;
+        config.commands.push(Command {
+            id: 9_000,
+            name: "Request landing".into(),
+            group: "Radio".into(),
+            phrases: vec!["request landing".into()],
+            sequence: "tab,0,8".into(),
+            enabled: true,
+        });
+        let dispatch = plan_action(&input(Mode::Command, "request landing", &config, false));
+        assert!(dispatch.ok);
+        let delays: Vec<u64> = dispatch
+            .steps
+            .iter()
+            .filter_map(|step| match step {
+                Step::Delay { ms } => Some(*ms),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(delays, vec![40, 80, 80]);
+
+        config.commands.last_mut().unwrap().sequence = "tab, delay:120, 0".into();
+        let spaced = plan_action(&input(Mode::Command, "request landing", &config, false));
+        let delays: Vec<u64> = spaced
+            .steps
+            .iter()
+            .filter_map(|step| match step {
+                Step::Delay { ms } => Some(*ms),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(delays, vec![40, 120]);
     }
 
     #[test]

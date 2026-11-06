@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use crate::audio::AudioEngine;
 use crate::bus::WorkerEvent;
-use crate::config::{self, Command, Config, JoyBind, Mode, SttEngine};
+use crate::config::{self, Command, Config, Gesture, JoyBind, Mode, SttEngine};
 use crate::cues::{CueKind, CuePlayer};
 use crate::hotkey::HotkeyHub;
 use crate::inject::InjectRequest;
@@ -94,6 +94,8 @@ pub struct CallsignApp {
     epoch: Arc<AtomicU64>,
     utterance: u64,
     gesture_mode: Option<Mode>,
+    /// Gesture style captured when this recording started.
+    active_gesture: Gesture,
     started: Instant,
     last_down_ms: u64,
     capture_started: Option<Instant>,
@@ -170,6 +172,7 @@ impl CallsignApp {
             epoch,
             utterance: 0,
             gesture_mode: None,
+            active_gesture: Gesture::Tap,
             started: Instant::now(),
             last_down_ms: 0,
             capture_started: None,
@@ -242,6 +245,7 @@ impl CallsignApp {
         let was_idle = self.phase == Phase::Idle;
         let (phase, effect) = phase::on_down(self.phase, now);
         if was_idle && effect == Effect::BeginCapture {
+            self.active_gesture = self.capture_gesture(command);
             self.gesture_mode = Some(if command {
                 Mode::Command
             } else {
@@ -259,7 +263,8 @@ impl CallsignApp {
         self.press = None;
         let now = self.now_ms();
         let opener = matches!(self.phase, Phase::Listening { opener_down: true });
-        let (phase, effect) = phase::on_up(self.phase, now, self.config.long_press_ms);
+        let hold = self.active_gesture == Gesture::Hold;
+        let (phase, effect) = phase::on_up(self.phase, now, self.config.long_press_ms, hold);
         self.phase = phase;
         if opener && matches!(self.phase, Phase::Listening { opener_down: false }) {
             self.cue(CueKind::Ready);
@@ -617,7 +622,8 @@ impl CallsignApp {
 
     fn tick_phase(&mut self) {
         let now = self.now_ms();
-        let (phase, effect) = phase::on_tick(self.phase, now, self.config.long_press_ms);
+        let hold = self.active_gesture == Gesture::Hold;
+        let (phase, effect) = phase::on_tick(self.phase, now, self.config.long_press_ms, hold);
         self.phase = phase;
         self.apply(effect);
     }
@@ -739,6 +745,8 @@ impl CallsignApp {
             token_floor: self.config.token_floor,
             command_max_extra: self.config.command_max_extra,
             mixed_max_extra: self.config.mixed_max_extra,
+            command_gap_ms: self.config.command_gap_ms,
+            command_lead_ms: self.config.command_lead_ms,
             practice: !self.config.send_keys,
         });
         let send = dispatch.ok && self.config.send_keys && !dispatch.steps.is_empty();
@@ -880,6 +888,26 @@ impl eframe::App for CallsignApp {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         let _ = self.config.save();
+    }
+}
+
+impl CallsignApp {
+    /// Talk uses the chat gesture, except when the header is already Commands.
+    /// The commands button always uses the command gesture.
+    fn capture_gesture(&self, command: bool) -> Gesture {
+        if command || self.config.mode == Mode::Command {
+            self.config.command_gesture
+        } else {
+            self.config.chat_gesture
+        }
+    }
+
+    pub(crate) fn shown_gesture(&self) -> Gesture {
+        if self.phase == Phase::Idle {
+            self.capture_gesture(false)
+        } else {
+            self.active_gesture
+        }
     }
 }
 

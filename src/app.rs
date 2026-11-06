@@ -78,6 +78,7 @@ pub struct CallsignApp {
     pub(crate) try_line: String,
     pub(crate) command_test: String,
     pub(crate) import_path: String,
+    pub(crate) import_note: String,
     pub(crate) listen_stick: Option<StickCapture>,
     pub(crate) download: Option<DownloadView>,
     pub(crate) mic_names: Vec<String>,
@@ -149,6 +150,7 @@ impl CallsignApp {
             try_line: String::new(),
             command_test: String::new(),
             import_path: String::new(),
+            import_note: String::new(),
             listen_stick: None,
             download: None,
             mic_names,
@@ -337,17 +339,39 @@ impl CallsignApp {
         }
     }
 
+    pub(crate) fn browse_commands(&mut self) {
+        let mut dialog = rfd::FileDialog::new()
+            .add_filter("Command list", &["json"])
+            .set_title("Import Callsign commands");
+        let parent = std::path::Path::new(self.import_path.trim()).parent();
+        if let Some(parent) = parent.filter(|path| path.is_dir()) {
+            dialog = dialog.set_directory(parent);
+        }
+        if let Some(path) = dialog.pick_file() {
+            self.import_path = path.display().to_string();
+            self.import_commands();
+        }
+    }
+
     pub(crate) fn import_commands(&mut self) {
         let path = self.import_path.trim().to_string();
         if path.is_empty() {
-            self.push_log(LogKind::Problem, "Type a path to a command file.".into());
+            let message = "Choose a command file with Browse, or paste its path.".to_string();
+            self.import_note = message.clone();
+            self.push_log(LogKind::Problem, message);
             return;
         }
         match config::import_commands(std::path::Path::new(&path)) {
             Ok(incoming) => {
                 let mut replaced = 0;
                 let mut added = 0;
-                for command in incoming {
+                let mut unreadable = Vec::new();
+                for command in incoming.commands {
+                    if !command.sequence.trim().is_empty()
+                        && keys::parse_sequence(&command.sequence).is_err()
+                    {
+                        unreadable.push(command.name.clone());
+                    }
                     if let Some(existing) = self
                         .config
                         .commands
@@ -366,12 +390,27 @@ impl CallsignApp {
                         added += 1;
                     }
                 }
-                self.push_log(
-                    LogKind::System,
-                    format!("Imported {added} new commands and updated {replaced}."),
-                );
+                let mut message = format!("Imported {added} new commands and updated {replaced}.");
+                if incoming.repaired {
+                    message.push_str(" A few commas in the file were repaired while reading it.");
+                }
+                self.push_log(LogKind::System, message.clone());
+                if !unreadable.is_empty() {
+                    let note = format!(
+                        "{message} {} of them use a mouse control Callsign can't press, starting with {}. Those stay in the list and are marked in red.",
+                        unreadable.len(),
+                        unreadable[0]
+                    );
+                    self.import_note = note.clone();
+                    self.push_log(LogKind::Problem, note);
+                } else {
+                    self.import_note = message;
+                }
             }
-            Err(err) => self.push_log(LogKind::Problem, err),
+            Err(err) => {
+                self.import_note = err.clone();
+                self.push_log(LogKind::Problem, err);
+            }
         }
     }
 

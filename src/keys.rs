@@ -43,6 +43,13 @@ pub enum NamedKey {
     LWin,
     RWin,
     Numpad(u8),
+    NumpadAdd,
+    NumpadSubtract,
+    NumpadMultiply,
+    NumpadDecimal,
+    NumpadDivide,
+    NumpadEnter,
+    PrintScreen,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,10 +105,8 @@ pub fn parse_sequence(input: &str) -> Result<Vec<Step>, String> {
             steps.push(Step::Delay { ms });
             continue;
         }
-        steps.push(Step::Chord {
-            modifiers: chord_modifiers(part)?,
-            key: chord_key(part)?,
-        });
+        let (modifiers, key) = split_chord(part)?;
+        steps.push(Step::Chord { modifiers, key });
     }
     Ok(steps)
 }
@@ -117,40 +122,72 @@ pub fn parse_ptt(input: &str) -> Result<Chord, String> {
     }
 }
 
-fn chord_modifiers(part: &str) -> Result<Vec<NamedKey>, String> {
-    let bits = plus_parts(part)?;
-    let mut modifiers = Vec::new();
-    for token in &bits[..bits.len() - 1] {
-        let key = parse_key(token)?;
-        if !is_modifier(key) {
-            return Err(format!(
-                "\"{token}\" can't modify another key. Use ctrl, alt, shift, or win."
-            ));
-        }
-        modifiers.push(key);
-    }
-    Ok(modifiers)
-}
-
-fn chord_key(part: &str) -> Result<NamedKey, String> {
-    let bits = plus_parts(part)?;
-    let key = parse_key(bits[bits.len() - 1])?;
-    if is_modifier(key) && bits.len() > 1 {
-        return Err("The last part of a chord has to be the key that gets pressed.".into());
-    }
-    Ok(key)
-}
-
-fn plus_parts(part: &str) -> Result<Vec<&str>, String> {
-    let bits: Vec<&str> = part
-        .split('+')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .collect();
-    if bits.is_empty() {
+/// Modifiers are peeled from the left, so a key such as `numpad+` keeps its plus.
+fn split_chord(part: &str) -> Result<(Vec<NamedKey>, NamedKey), String> {
+    let mut rest = part.trim();
+    if rest.is_empty() {
         return Err(format!("\"{part}\" is not a key."));
     }
-    Ok(bits)
+    let mut modifiers = Vec::new();
+    while let Some((modifier, after)) = take_modifier(rest) {
+        modifiers.push(modifier);
+        rest = after.trim();
+        if rest.is_empty() {
+            return Err(format!("\"{part}\" is missing the key after the modifier."));
+        }
+    }
+    let key = parse_key(rest)?;
+    if is_modifier(key) && !modifiers.is_empty() {
+        return Err("The last part of a chord has to be the key that gets pressed.".into());
+    }
+    Ok((modifiers, key))
+}
+
+fn take_modifier(input: &str) -> Option<(NamedKey, &str)> {
+    const MODIFIERS: &[(&str, NamedKey)] = &[
+        ("leftcontrol", NamedKey::LCtrl),
+        ("rightcontrol", NamedKey::RCtrl),
+        ("leftctrl", NamedKey::LCtrl),
+        ("rightctrl", NamedKey::RCtrl),
+        ("leftshift", NamedKey::LShift),
+        ("rightshift", NamedKey::RShift),
+        ("leftalt", NamedKey::LAlt),
+        ("rightalt", NamedKey::RAlt),
+        ("leftwin", NamedKey::LWin),
+        ("rightwin", NamedKey::RWin),
+        ("lcontrol", NamedKey::LCtrl),
+        ("rcontrol", NamedKey::RCtrl),
+        ("lshift", NamedKey::LShift),
+        ("rshift", NamedKey::RShift),
+        ("lsuper", NamedKey::LWin),
+        ("rsuper", NamedKey::RWin),
+        ("lctrl", NamedKey::LCtrl),
+        ("rctrl", NamedKey::RCtrl),
+        ("lmeta", NamedKey::LWin),
+        ("rmeta", NamedKey::RWin),
+        ("lalt", NamedKey::LAlt),
+        ("ralt", NamedKey::RAlt),
+        ("altgr", NamedKey::RAlt),
+        ("control", NamedKey::LCtrl),
+        ("shift", NamedKey::LShift),
+        ("super", NamedKey::LWin),
+        ("ctrl", NamedKey::LCtrl),
+        ("meta", NamedKey::LWin),
+        ("lwin", NamedKey::LWin),
+        ("rwin", NamedKey::RWin),
+        ("alt", NamedKey::LAlt),
+        ("win", NamedKey::LWin),
+    ];
+    let trimmed = input.trim_start();
+    for (name, key) in MODIFIERS {
+        if trimmed.len() >= name.len() && trimmed[..name.len()].eq_ignore_ascii_case(name) {
+            let after = trimmed[name.len()..].trim_start();
+            if let Some(after) = after.strip_prefix('+') {
+                return Some((*key, after));
+            }
+        }
+    }
+    None
 }
 
 pub fn parse_key(token: &str) -> Result<NamedKey, String> {
@@ -177,6 +214,13 @@ pub fn parse_key(token: &str) -> Result<NamedKey, String> {
         "period" | "dot" | "." => NamedKey::Period,
         "minus" | "dash" | "-" => NamedKey::Minus,
         "equal" | "equals" | "=" => NamedKey::Equal,
+        "numpad+" | "numpadplus" | "kp+" => NamedKey::NumpadAdd,
+        "numpad-" | "numpadminus" | "kp-" => NamedKey::NumpadSubtract,
+        "numpad*" | "numpadstar" | "kp*" => NamedKey::NumpadMultiply,
+        "numpad." | "numpaddot" | "kp." => NamedKey::NumpadDecimal,
+        "numpad/" | "numpadslash" | "kp/" => NamedKey::NumpadDivide,
+        "numpad_enter" | "numpadenter" | "kpenter" => NamedKey::NumpadEnter,
+        "printscreen" | "prtsc" | "prtscn" | "snapshot" => NamedKey::PrintScreen,
         "scrolllock" | "scroll" => NamedKey::ScrollLock,
         "pause" | "break" => NamedKey::Pause,
         "lctrl" | "lcontrol" | "leftctrl" => NamedKey::LCtrl,
@@ -206,7 +250,7 @@ pub fn parse_key(token: &str) -> Result<NamedKey, String> {
             }
             let mut chars = t.chars();
             if let (Some(c), None) = (chars.next(), chars.next()) {
-                if c.is_ascii_alphanumeric() {
+                if c.is_ascii_alphanumeric() || c.is_ascii_punctuation() {
                     return Ok(NamedKey::Char(c));
                 }
             }
@@ -252,6 +296,13 @@ pub fn describe_key(key: NamedKey) -> String {
         NamedKey::LWin => "Left Win".into(),
         NamedKey::RWin => "Right Win".into(),
         NamedKey::Numpad(n) => format!("Numpad {n}"),
+        NamedKey::NumpadAdd => "Numpad +".into(),
+        NamedKey::NumpadSubtract => "Numpad -".into(),
+        NamedKey::NumpadMultiply => "Numpad *".into(),
+        NamedKey::NumpadDecimal => "Numpad .".into(),
+        NamedKey::NumpadDivide => "Numpad /".into(),
+        NamedKey::NumpadEnter => "Numpad Enter".into(),
+        NamedKey::PrintScreen => "Print Screen".into(),
     }
 }
 
@@ -319,6 +370,13 @@ pub fn keyboard_code_name(key: NamedKey) -> String {
         NamedKey::LWin => "MetaLeft".into(),
         NamedKey::RWin => "MetaRight".into(),
         NamedKey::Numpad(n) => format!("Numpad{n}"),
+        NamedKey::NumpadAdd => "NumpadAdd".into(),
+        NamedKey::NumpadSubtract => "NumpadSubtract".into(),
+        NamedKey::NumpadMultiply => "NumpadMultiply".into(),
+        NamedKey::NumpadDecimal => "NumpadDecimal".into(),
+        NamedKey::NumpadDivide => "NumpadDivide".into(),
+        NamedKey::NumpadEnter => "NumpadEnter".into(),
+        NamedKey::PrintScreen => "PrintScreen".into(),
     }
 }
 
@@ -389,6 +447,31 @@ mod tests {
     #[test]
     fn unknown_key_is_an_error() {
         assert!(parse_sequence("notakey").is_err());
+        assert!(parse_sequence("mouse_left").is_err());
+        assert!(parse_sequence("mousex").is_err());
+    }
+
+    #[test]
+    fn cockpit_punctuation_and_numpad_math_are_keys() {
+        for sequence in [
+            "@",
+            "\\",
+            "'",
+            ";",
+            "[",
+            "]",
+            "numpad+",
+            "rshift+numpad+",
+            "rshift+numpad-",
+            "numpad*",
+            "numpad.",
+            "numpad_enter",
+            "printscreen",
+            "rctrl+'",
+            "tab,0,8",
+        ] {
+            parse_sequence(sequence).unwrap_or_else(|err| panic!("{sequence}: {err}"));
+        }
     }
 
     #[test]

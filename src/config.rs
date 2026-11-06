@@ -383,16 +383,314 @@ pub fn export_commands(commands: &[Command]) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-pub fn import_commands(path: &Path) -> Result<Vec<Command>, String> {
+pub struct ImportedCommands {
+    pub commands: Vec<Command>,
+    pub repaired: bool,
+}
+
+pub fn import_commands(path: &Path) -> Result<ImportedCommands, String> {
     let text = fs::read_to_string(path).map_err(|err| format!("Couldn't read that file. {err}"))?;
-    if let Ok(file) = serde_json::from_str::<CommandFile>(&text) {
-        return Ok(file.commands);
+    parse_command_list(&text)
+        .map_err(|err| format!("That file isn't a Callsign command list. {err}"))
+}
+
+fn parse_command_list(text: &str) -> Result<ImportedCommands, String> {
+    if let Some(commands) = decode_commands(text) {
+        return Ok(ImportedCommands {
+            commands,
+            repaired: false,
+        });
     }
-    serde_json::from_str::<Vec<Command>>(&text)
-        .map_err(|_| "That file isn't a Callsign command list.".into())
+    let repaired = repair_command_json(text);
+    match decode_commands(&repaired) {
+        Some(commands) => Ok(ImportedCommands {
+            commands,
+            repaired: true,
+        }),
+        None => Err(decode_commands_error(&repaired)),
+    }
+}
+
+fn decode_commands(text: &str) -> Option<Vec<Command>> {
+    if let Ok(file) = serde_json::from_str::<CommandFile>(text) {
+        return Some(file.commands);
+    }
+    serde_json::from_str::<Vec<Command>>(text).ok()
+}
+
+fn decode_commands_error(text: &str) -> String {
+    serde_json::from_str::<CommandFile>(text)
+        .err()
+        .map(|err| err.to_string())
+        .unwrap_or_else(|| "The list could not be read.".into())
+}
+
+/// Hand-edited lists often have a trailing comma, a missing comma between
+/// phrases, or a sequence written as several strings (`"tab","0","8"`).
+fn repair_command_json(text: &str) -> String {
+    let joined = join_split_sequences(text);
+    let with_commas = insert_missing_commas(&joined);
+    let without_strays = drop_stray_array_numbers(&with_commas);
+    strip_trailing_commas(&without_strays)
+}
+
+/// A phrase list sometimes starts with a stray number, as in `"phrases": [3 "requesting landing"]`.
+fn drop_stray_array_numbers(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if let Some((_, end)) = read_json_string(text, i) {
+            out.push_str(&text[i..end]);
+            i = end;
+            continue;
+        }
+        if bytes[i] == b'[' {
+            out.push('[');
+            let mut cursor = skip_ws(text, i + 1);
+            if cursor < bytes.len() && (bytes[cursor].is_ascii_digit() || bytes[cursor] == b'-') {
+                let number_end = skip_number(text, cursor);
+                let after = skip_ws(text, number_end);
+                if after < bytes.len() && (bytes[after] == b'"' || bytes[after] == b',') {
+                    i = if bytes[after] == b',' {
+                        after + 1
+                    } else {
+                        after
+                    };
+                    continue;
+                }
+            }
+            i += 1;
+            continue;
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
+}
+
+fn skip_number(text: &str, start: usize) -> usize {
+    let bytes = text.as_bytes();
+    let mut i = start;
+    if i < bytes.len() && bytes[i] == b'-' {
+        i += 1;
+    }
+    while i < bytes.len() && bytes[i].is_ascii_digit() {
+        i += 1;
+    }
+    i
+}
+
+fn join_split_sequences(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if let Some((value, next)) = read_json_string(text, i) {
+            out.push_str(&text[i..next]);
+            if value == "sequence" {
+                let cursor = skip_ws(text, next);
+                if cursor < text.len() && text.as_bytes()[cursor] == b':' {
+                    let after_colon = skip_ws(text, cursor + 1);
+                    if let Some((parts, end)) = read_sequence_parts(text, after_colon) {
+                        if parts.len() > 1 {
+                            out.push_str(&text[next..=cursor]);
+                            out.push('"');
+                            out.push_str(&escape_json(&parts.join(",")));
+                            out.push('"');
+                            i = end;
+                            continue;
+                        }
+                    }
+                }
+            }
+            i = next;
+            continue;
+        }
+        out.push(text[i..].chars().next().unwrap());
+        i += text[i..].chars().next().unwrap().len_utf8();
+    }
+    out
+}
+
+fn read_sequence_parts(text: &str, start: usize) -> Option<(Vec<String>, usize)> {
+    let (first, mut end) = read_json_string(text, start)?;
+    let mut parts = vec![first];
+    loop {
+        let after = skip_ws(text, end);
+        if after >= text.len() || text.as_bytes()[after] != b',' {
+            break;
+        }
+        let next = skip_ws(text, after + 1);
+        let (value, value_end) = read_json_string(text, next)?;
+        let after_value = skip_ws(text, value_end);
+        if after_value < text.len() && text.as_bytes()[after_value] == b':' {
+            break;
+        }
+        parts.push(value);
+        end = value_end;
+    }
+    Some((parts, end))
+}
+
+fn insert_missing_commas(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    while i < text.len() {
+        if let Some((_, end)) = read_json_string(text, i) {
+            out.push_str(&text[i..end]);
+            let after = skip_ws(text, end);
+            if read_json_string(text, after).is_some() {
+                out.push(',');
+            }
+            i = end;
+            continue;
+        }
+        let ch = text[i..].chars().next().unwrap();
+        out.push(ch);
+        i += ch.len_utf8();
+    }
+    out
+}
+
+fn strip_trailing_commas(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if let Some((_, end)) = read_json_string(text, i) {
+            out.push_str(&text[i..end]);
+            i = end;
+            continue;
+        }
+        if bytes[i] == b',' {
+            let mut j = i + 1;
+            while j < bytes.len() && bytes[j].is_ascii_whitespace() {
+                j += 1;
+            }
+            if j < bytes.len() && (bytes[j] == b']' || bytes[j] == b'}') {
+                i += 1;
+                continue;
+            }
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
+}
+
+fn read_json_string(text: &str, start: usize) -> Option<(String, usize)> {
+    let bytes = text.as_bytes();
+    if start >= bytes.len() || bytes[start] != b'"' {
+        return None;
+    }
+    let mut value = String::new();
+    let mut i = start + 1;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'"' => return Some((value, i + 1)),
+            b'\\' => {
+                i += 1;
+                if i >= bytes.len() {
+                    return None;
+                }
+                match bytes[i] {
+                    b'"' => value.push('"'),
+                    b'\\' => value.push('\\'),
+                    b'/' => value.push('/'),
+                    b'n' => value.push('\n'),
+                    b'r' => value.push('\r'),
+                    b't' => value.push('\t'),
+                    _ => return None,
+                }
+                i += 1;
+            }
+            byte => {
+                let ch = text[i..].chars().next()?;
+                value.push(ch);
+                i += ch.len_utf8();
+                let _ = byte;
+            }
+        }
+    }
+    None
+}
+
+fn skip_ws(text: &str, mut i: usize) -> usize {
+    let bytes = text.as_bytes();
+    while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+        i += 1;
+    }
+    i
+}
+
+fn escape_json(text: &str) -> String {
+    let mut out = String::new();
+    for ch in text.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            _ => out.push(ch),
+        }
+    }
+    out
 }
 
 #[derive(Serialize, Deserialize)]
 struct CommandFile {
     commands: Vec<Command>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn import_repairs_the_commas_in_a_hand_edited_list() {
+        let raw = r#"{
+          "commands": [
+            {
+              "id": 1,
+              "name": "Accept",
+              "group": "Flight",
+              "phrases": ["accept",],
+              "sequence": "space",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "name": "Request landing",
+              "group": "Flight",
+              "phrases": ["requesting landing"],
+              "sequence": "tab","0","8",
+              "enabled": false
+            },
+            {
+              "id": 3,
+              "name": "Nearest beacon",
+              "group": "Flight",
+              "phrases": [3
+                "select nearest airbase"
+                "select nearest"
+              ],
+              "sequence": "ralt+insert",
+              "enabled": true
+            }
+          ],
+        }"#;
+        let path = std::env::temp_dir().join("callsign-import-repair.json");
+        std::fs::write(&path, raw).unwrap();
+        let imported = import_commands(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+        assert!(imported.repaired);
+        assert_eq!(imported.commands.len(), 3);
+        assert_eq!(imported.commands[1].sequence, "tab,0,8");
+        assert_eq!(
+            imported.commands[2].phrases,
+            vec!["select nearest airbase", "select nearest"]
+        );
+    }
 }

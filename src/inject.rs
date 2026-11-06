@@ -217,6 +217,13 @@ pub fn to_enigo(key: NamedKey) -> Result<Key, String> {
         NamedKey::LWin => Key::Meta,
         NamedKey::RWin => win_right(),
         NamedKey::Numpad(n) => numpad(n)?,
+        NamedKey::NumpadAdd => Key::Add,
+        NamedKey::NumpadSubtract => Key::Subtract,
+        NamedKey::NumpadMultiply => Key::Multiply,
+        NamedKey::NumpadDecimal => Key::Decimal,
+        NamedKey::NumpadDivide => Key::Divide,
+        NamedKey::NumpadEnter => Key::Return,
+        NamedKey::PrintScreen => Key::PrintScr,
     })
 }
 

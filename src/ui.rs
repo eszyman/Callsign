@@ -476,15 +476,29 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
         });
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.add(
-                egui::TextEdit::singleline(&mut app.import_path)
-                    .hint_text("Path to a command file")
-                    .desired_width((ui.available_width() - 88.0).max(160.0)),
-            );
+            if ui.button("Browse").clicked() {
+                app.browse_commands();
+            }
             if ui.button("Import").clicked() {
                 app.import_commands();
             }
         });
+        ui.add(
+            egui::TextEdit::singleline(&mut app.import_path)
+                .hint_text("Path to a command file")
+                .desired_width(f32::INFINITY),
+        );
+        if !app.import_note.is_empty() {
+            let color = if app.import_note.contains("isn't") || app.import_note.contains("Couldn't")
+            {
+                theme::RED
+            } else if app.import_note.contains("can't press") {
+                theme::AMBER
+            } else {
+                theme::GREEN
+            };
+            ui.label(RichText::new(&app.import_note).size(13.0).color(color));
+        }
         ui.add_space(14.0);
         let mut groups: Vec<String> = Vec::new();
         for command in &app.config.commands {

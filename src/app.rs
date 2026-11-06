@@ -16,6 +16,7 @@ use crate::cues::{CueKind, CuePlayer};
 use crate::hotkey::{HotkeyHub, KeyRole};
 use crate::inject::InjectRequest;
 use crate::keys;
+use crate::keystate;
 use crate::phase::{self, Effect, Phase};
 use crate::plan::{self, PlanInput};
 use crate::presets::merge_starter;
@@ -103,6 +104,13 @@ pub struct CallsignApp {
     /// The control that is physically down for the current press.
     /// A different control releasing must not send or cancel that press.
     press: Option<Press>,
+    /// Hold-to-talk saw a release edge. A poll of the key or stick can still
+    /// say the control is down, and that poll wins.
+    release_seen: bool,
+    /// The talk key has been observed down since this hold started.
+    key_seen_down: bool,
+    /// When the hold control first looked up. Cleared if it goes down again.
+    hold_up_since: Option<u64>,
     talk_stick_down: bool,
     command_stick_down: bool,
     screen_down: bool,
@@ -182,6 +190,9 @@ impl CallsignApp {
             last_down_ms: 0,
             capture_started: None,
             press: None,
+            release_seen: false,
+            key_seen_down: false,
+            hold_up_since: None,
             talk_stick_down: false,
             command_stick_down: false,
             screen_down: false,
@@ -233,6 +244,12 @@ impl CallsignApp {
     }
 
     fn edge_down(&mut self, press: Press, command: bool) {
+        if self.press == Some(press) {
+            // The same control dipped and came back. Keep this hold open.
+            self.release_seen = false;
+            self.hold_up_since = None;
+            return;
+        }
         if self.press.is_some() {
             return;
         }
@@ -252,6 +269,9 @@ impl CallsignApp {
         let was_idle = self.phase == Phase::Idle;
         let (phase, effect) = phase::on_down(self.phase, now);
         if was_idle && effect == Effect::BeginCapture {
+            self.release_seen = false;
+            self.key_seen_down = false;
+            self.hold_up_since = None;
             self.active_gesture = self.capture_gesture(command);
             self.gesture_mode = Some(if command {
                 Mode::Command
@@ -267,7 +287,18 @@ impl CallsignApp {
         if self.press != Some(press) {
             return;
         }
-        self.press = None;
+        if self.active_gesture == Gesture::Hold && phase::is_capturing(self.phase) {
+            self.release_seen = true;
+            return;
+        }
+        self.finish_release();
+    }
+
+    fn finish_release(&mut self) {
+        if self.press.is_none() {
+            return;
+        }
+        self.drop_press();
         let now = self.now_ms();
         let opener = matches!(self.phase, Phase::Listening { opener_down: true });
         let hold = self.active_gesture == Gesture::Hold;
@@ -279,13 +310,75 @@ impl CallsignApp {
         self.apply(effect);
     }
 
+    fn drop_press(&mut self) {
+        self.press = None;
+        self.release_seen = false;
+        self.key_seen_down = false;
+        self.hold_up_since = None;
+    }
+
+    /// Hold-to-talk ends only after its own control has stayed up.
+    fn watch_hold(&mut self) {
+        let live = self.active_gesture == Gesture::Hold
+            && phase::is_capturing(self.phase)
+            && self.press.is_some();
+        if !live {
+            self.hold_up_since = None;
+            return;
+        }
+        let still_down = self.hold_control_down();
+        let now = self.now_ms();
+        if phase::hold_should_send(&mut self.hold_up_since, now, still_down) {
+            self.finish_release();
+        }
+    }
+
+    fn hold_control_down(&mut self) -> bool {
+        match self.press {
+            Some(Press::TalkStick) => self.stick_held(false),
+            Some(Press::CommandStick) => self.stick_held(true),
+            Some(Press::Screen) => self.screen_down,
+            Some(Press::TalkKey) => self.key_still_down(&self.config.ptt.clone()),
+            Some(Press::CommandKey) => self.key_still_down(&self.config.command_ptt.clone()),
+            None => false,
+        }
+    }
+
+    fn stick_held(&self, command: bool) -> bool {
+        let bind = if command {
+            &self.config.command_joystick
+        } else {
+            &self.config.joystick
+        };
+        bind.as_ref()
+            .is_some_and(|bind| self.sticks.is_held(&bind.guid, &bind.name, bind.button))
+    }
+
+    fn key_still_down(&mut self, spec: &str) -> bool {
+        let physical = keys::parse_ptt(spec)
+            .ok()
+            .and_then(|chord| keystate::is_down(chord.key));
+        let elapsed = self
+            .capture_started
+            .map(|start| start.elapsed().as_millis() as u64)
+            .unwrap_or(0);
+        phase::key_held(
+            physical,
+            &mut self.key_seen_down,
+            self.release_seen,
+            elapsed,
+        )
+    }
+
     pub(crate) fn force_send(&mut self) {
         if phase::is_capturing(self.phase) {
+            self.drop_press();
             self.begin_transcribe();
         }
     }
 
     pub(crate) fn cancel_gesture(&mut self) {
+        self.drop_press();
         let effect = match self.phase {
             Phase::Idle | Phase::Dispatching => return,
             Phase::Transcribing => Effect::CancelInFlight,
@@ -525,6 +618,7 @@ impl CallsignApp {
                 self.edge_up(press);
             }
         }
+        self.watch_hold();
         self.poll_events();
         self.tick_phase();
         self.tick_limit();

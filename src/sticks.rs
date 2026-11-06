@@ -85,7 +85,10 @@ impl StickHub {
         for (index, stick) in inner.open.iter().enumerate() {
             let buttons = stick.joystick.num_buttons();
             for button in 0..buttons {
-                let down = stick.joystick.button(button).unwrap_or(false);
+                let down = match stick.joystick.button(button) {
+                    Ok(down) => down,
+                    Err(_) => inner.prev.get(&(index, button)).copied().unwrap_or(false),
+                };
                 let was = inner.prev.get(&(index, button)).copied().unwrap_or(false);
                 if down && !was {
                     edges.push(Edge {

@@ -79,6 +79,43 @@ pub fn on_tick(phase: Phase, now_ms: u64, long_ms: u64, hold: bool) -> (Phase, E
     }
 }
 
+/// A hold-to-talk release has to stay up this long before the recording ends.
+/// Contact bounce and a one-frame drop in a stick reading are shorter than this.
+pub const HOLD_SETTLE_MS: u64 = 120;
+
+/// `true` when hold-to-talk should end the recording.
+/// The control dipping and coming back clears the timer and keeps the line open.
+pub fn hold_should_send(up_since: &mut Option<u64>, now_ms: u64, still_down: bool) -> bool {
+    if still_down {
+        *up_since = None;
+        return false;
+    }
+    let since = *up_since.get_or_insert(now_ms);
+    now_ms.saturating_sub(since) >= HOLD_SETTLE_MS
+}
+
+/// Whether a keyboard hold is still down.
+///
+/// `physical` is a direct poll of the key. `None` means this machine can't
+/// poll it, so a release event is trusted after a short grace. That grace
+/// covers the Windows hotkey watcher, which can report a release before the
+/// key has ever looked down.
+pub fn key_held(
+    physical: Option<bool>,
+    seen_down: &mut bool,
+    release_seen: bool,
+    elapsed_ms: u64,
+) -> bool {
+    match physical {
+        Some(true) => {
+            *seen_down = true;
+            true
+        }
+        Some(false) if *seen_down => false,
+        _ => !release_seen || elapsed_ms < 250,
+    }
+}
+
 pub fn is_capturing(phase: Phase) -> bool {
     matches!(phase, Phase::Listening { .. } | Phase::Holding { .. })
 }
@@ -181,6 +218,32 @@ mod tests {
         let (phase, effect) = on_down(Phase::Dispatching, 9_000);
         assert_eq!(phase, Phase::Dispatching);
         assert_eq!(effect, Effect::None);
+    }
+
+    #[test]
+    fn hold_ignores_a_short_drop_and_sends_only_after_the_button_stays_up() {
+        let mut up = None;
+        assert!(!hold_should_send(&mut up, 1_000, true));
+        assert!(!hold_should_send(&mut up, 1_016, false));
+        assert!(!hold_should_send(&mut up, 1_032, true));
+        assert!(up.is_none());
+        assert!(!hold_should_send(&mut up, 2_000, false));
+        assert!(!hold_should_send(&mut up, 2_119, false));
+        assert!(hold_should_send(&mut up, 2_120, false));
+    }
+
+    #[test]
+    fn key_hold_ignores_a_release_until_the_key_has_actually_come_up() {
+        let mut seen = false;
+        assert!(key_held(Some(false), &mut seen, true, 40));
+        assert!(!seen);
+        assert!(key_held(Some(true), &mut seen, true, 50));
+        assert!(seen);
+        assert!(!key_held(Some(false), &mut seen, true, 80));
+        let mut unseen = false;
+        assert!(key_held(None, &mut unseen, false, 5_000));
+        assert!(key_held(None, &mut unseen, true, 40));
+        assert!(!key_held(None, &mut unseen, true, 250));
     }
 
     #[test]

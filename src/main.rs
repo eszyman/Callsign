@@ -13,6 +13,7 @@ mod hotkey;
 mod icon_file;
 mod inject;
 mod keys;
+mod keystate;
 mod match_cmd;
 mod phase;
 mod plan;

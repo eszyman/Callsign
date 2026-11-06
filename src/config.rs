@@ -57,6 +57,54 @@ impl Mode {
     }
 }
 
+/// Which sim Callsign is talking to.
+///
+/// Korea and Great Battles keep separate chat channels and command lists.
+/// The talk button, microphone, and speech engine stay shared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Game {
+    Korea,
+    Gb,
+}
+
+impl Default for Game {
+    fn default() -> Self {
+        Self::Korea
+    }
+}
+
+impl Game {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Korea => "IL-2 Series: Korea",
+            Self::Gb => "IL-2 Great Battles",
+        }
+    }
+
+    pub fn cli_name(self) -> &'static str {
+        match self {
+            Self::Korea => "korea",
+            Self::Gb => "gb",
+        }
+    }
+
+    pub fn other(self) -> Self {
+        match self {
+            Self::Korea => Self::Gb,
+            Self::Gb => Self::Korea,
+        }
+    }
+
+    pub fn parse(text: &str) -> Option<Self> {
+        match text.trim().to_ascii_lowercase().replace('_', "-").as_str() {
+            "korea" | "il2-korea" | "series-korea" => Some(Self::Korea),
+            "gb" | "great-battles" | "greatbattles" | "battles" => Some(Self::Gb),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SttEngine {
@@ -188,10 +236,47 @@ pub struct Command {
     pub enabled: bool,
 }
 
+/// Chat channels, command list, and the sim window title for one game.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct GameProfile {
+    pub focus_title: String,
+    pub chat: ChatSettings,
+    pub commands: Vec<Command>,
+    pub next_id: u64,
+}
+
+impl GameProfile {
+    pub fn fresh(game: Game) -> Self {
+        let commands = starter_commands(game);
+        let next_id = commands.iter().map(|command| command.id).max().unwrap_or(0) + 1;
+        Self {
+            focus_title: default_focus_title(),
+            chat: ChatSettings::il2(),
+            commands,
+            next_id,
+        }
+    }
+}
+
+impl Default for GameProfile {
+    fn default() -> Self {
+        Self::fresh(Game::Korea)
+    }
+}
+
+fn default_version() -> u32 {
+    2
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(default)]
 pub struct Config {
+    #[serde(default = "default_version")]
     pub version: u32,
+    pub game: Game,
+    pub korea: GameProfile,
+    pub gb: GameProfile,
     pub mode: Mode,
     #[serde(default = "default_ptt")]
     pub ptt: String,
@@ -220,17 +305,12 @@ pub struct Config {
     #[serde(default)]
     pub command_lead_ms: u64,
     pub send_keys: bool,
-    #[serde(default = "default_focus_title")]
-    pub focus_title: String,
     #[serde(default = "default_true")]
     pub require_focus: bool,
     #[serde(default = "default_true")]
     pub cues: bool,
     #[serde(default = "default_cue_volume")]
     pub cue_volume: f32,
-    pub chat: ChatSettings,
-    pub commands: Vec<Command>,
-    pub next_id: u64,
     pub audio_device: Option<String>,
     #[serde(default = "default_silence")]
     pub silence_rms: f32,
@@ -287,10 +367,11 @@ fn default_mixed_extra() -> usize {
 
 impl Default for Config {
     fn default() -> Self {
-        let commands = starter_commands();
-        let next_id = commands.iter().map(|command| command.id).max().unwrap_or(0) + 1;
         Self {
-            version: 1,
+            version: default_version(),
+            game: Game::Korea,
+            korea: GameProfile::fresh(Game::Korea),
+            gb: GameProfile::fresh(Game::Gb),
             mode: Mode::Chat,
             ptt: default_ptt(),
             joystick: None,
@@ -304,13 +385,9 @@ impl Default for Config {
             command_gap_ms: default_command_gap(),
             command_lead_ms: 0,
             send_keys: false,
-            focus_title: default_focus_title(),
             require_focus: true,
             cues: true,
             cue_volume: default_cue_volume(),
-            chat: ChatSettings::il2(),
-            commands,
-            next_id,
             audio_device: None,
             silence_rms: default_silence(),
             max_record_ms: default_max_record(),
@@ -322,18 +399,35 @@ impl Default for Config {
     }
 }
 
+/// What `load` wants the desk to say, besides the settings themselves.
+pub struct LoadNotes {
+    pub problem: Option<String>,
+    pub migrated: Option<String>,
+}
+
 impl Config {
-    pub fn load() -> (Self, Option<String>) {
+    pub fn load(launch: Option<Game>) -> (Self, LoadNotes) {
         let path = config_path();
         let text = match fs::read_to_string(&path) {
             Ok(text) => text,
-            Err(_) => return (Self::default(), None),
-        };
-        match serde_json::from_str::<Config>(&text) {
-            Ok(mut config) => {
-                config.normalize();
-                (config, None)
+            Err(_) => {
+                return (
+                    Self::for_launch(launch),
+                    LoadNotes {
+                        problem: None,
+                        migrated: None,
+                    },
+                )
             }
+        };
+        match parse_config(&text, launch) {
+            Ok((config, migrated)) => (
+                config,
+                LoadNotes {
+                    problem: None,
+                    migrated,
+                },
+            ),
             Err(err) => {
                 let backup = path.with_extension("json.bak");
                 let _ = fs::rename(&path, &backup);
@@ -341,9 +435,23 @@ impl Config {
                     "Settings file could not be read ({err}). Started fresh. The old file is at {}.",
                     backup.display()
                 );
-                (Self::default(), Some(warning))
+                (
+                    Self::for_launch(launch),
+                    LoadNotes {
+                        problem: Some(warning),
+                        migrated: None,
+                    },
+                )
             }
         }
+    }
+
+    fn for_launch(launch: Option<Game>) -> Self {
+        let mut config = Self::default();
+        if let Some(game) = launch {
+            config.game = game;
+        }
+        config
     }
 
     pub fn save(&self) -> Result<(), String> {
@@ -369,21 +477,8 @@ impl Config {
     }
 
     pub fn normalize(&mut self) {
-        let max_id = self
-            .commands
-            .iter()
-            .map(|command| command.id)
-            .max()
-            .unwrap_or(0);
-        if self.next_id <= max_id {
-            self.next_id = max_id + 1;
-        }
-        if self.chat.profiles.is_empty() {
-            self.chat = ChatSettings::il2();
-        }
-        if self.chat.profile >= self.chat.profiles.len() {
-            self.chat.profile = 0;
-        }
+        normalize_profile(&mut self.korea);
+        normalize_profile(&mut self.gb);
         self.long_press_ms = self.long_press_ms.clamp(300, 1_500);
         self.command_gap_ms = self.command_gap_ms.min(400);
         self.command_lead_ms = self.command_lead_ms.min(600);
@@ -391,12 +486,51 @@ impl Config {
         self.cue_volume = self.cue_volume.clamp(0.0, 0.4);
         self.silence_rms = self.silence_rms.clamp(0.0, 0.2);
         self.token_floor = self.token_floor.clamp(0.5, 0.99);
-        if self.chat.max_chars == 0 {
-            self.chat.max_chars = 160;
+        if self.version < 2 {
+            self.version = 2;
         }
-        if self.version == 0 {
-            self.version = 1;
+    }
+
+    pub fn set_game(&mut self, game: Game) {
+        self.game = game;
+    }
+
+    pub fn active(&self) -> &GameProfile {
+        match self.game {
+            Game::Korea => &self.korea,
+            Game::Gb => &self.gb,
         }
+    }
+
+    pub fn active_mut(&mut self) -> &mut GameProfile {
+        match self.game {
+            Game::Korea => &mut self.korea,
+            Game::Gb => &mut self.gb,
+        }
+    }
+
+    pub fn chat(&self) -> &ChatSettings {
+        &self.active().chat
+    }
+
+    pub fn chat_mut(&mut self) -> &mut ChatSettings {
+        &mut self.active_mut().chat
+    }
+
+    pub fn commands(&self) -> &[Command] {
+        &self.active().commands
+    }
+
+    pub fn commands_mut(&mut self) -> &mut Vec<Command> {
+        &mut self.active_mut().commands
+    }
+
+    pub fn focus_title(&self) -> &str {
+        &self.active().focus_title
+    }
+
+    pub fn focus_title_mut(&mut self) -> &mut String {
+        &mut self.active_mut().focus_title
     }
 
     pub fn resolved_model_path(&self) -> PathBuf {
@@ -408,10 +542,235 @@ impl Config {
     }
 
     pub fn alloc_id(&mut self) -> u64 {
-        let id = self.next_id;
-        self.next_id += 1;
+        let profile = self.active_mut();
+        let id = profile.next_id;
+        profile.next_id += 1;
         id
     }
+}
+
+fn normalize_profile(profile: &mut GameProfile) {
+    if profile.chat.profiles.is_empty() {
+        profile.chat = ChatSettings::il2();
+    }
+    if profile.chat.profile >= profile.chat.profiles.len() {
+        profile.chat.profile = 0;
+    }
+    if profile.chat.max_chars == 0 {
+        profile.chat.max_chars = 160;
+    }
+    let max_id = profile
+        .commands
+        .iter()
+        .map(|command| command.id)
+        .max()
+        .unwrap_or(0);
+    if profile.next_id <= max_id {
+        profile.next_id = max_id + 1;
+    }
+}
+
+impl<'de> Deserialize<'de> for Config {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        parse_value(value, None)
+            .map(|(config, _)| config)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+pub fn parse_config(text: &str, launch: Option<Game>) -> Result<(Config, Option<String>), String> {
+    let value = serde_json::from_str(text).map_err(|err| err.to_string())?;
+    parse_value(value, launch)
+}
+
+fn parse_value(
+    value: serde_json::Value,
+    launch: Option<Game>,
+) -> Result<(Config, Option<String>), String> {
+    let raw: RawConfig = serde_json::from_value(value).map_err(|err| err.to_string())?;
+    let legacy = raw.korea.is_none() && raw.gb.is_none();
+    let mut game = raw.game.unwrap_or(Game::Korea);
+    let mut korea = raw.korea.unwrap_or_else(|| GameProfile::fresh(Game::Korea));
+    let mut gb = raw.gb.unwrap_or_else(|| GameProfile::fresh(Game::Gb));
+    let mut migrated = None;
+    if legacy {
+        let target = launch.unwrap_or(game);
+        let carried = GameProfile {
+            focus_title: raw.focus_title.clone().unwrap_or_else(default_focus_title),
+            chat: raw.chat.clone().unwrap_or_else(ChatSettings::il2),
+            commands: raw
+                .commands
+                .clone()
+                .unwrap_or_else(|| starter_commands(target)),
+            next_id: raw.next_id.unwrap_or(0),
+        };
+        match target {
+            Game::Korea => korea = carried,
+            Game::Gb => gb = carried,
+        }
+        game = target;
+        let other = target.other();
+        migrated = Some(format!(
+            "Saved commands and chat are now the {} profile. {} starts from its own starter list. Switch the game in Setup if those saved commands were for {}.",
+            target.label(),
+            other.label(),
+            other.label()
+        ));
+    } else if let Some(launch) = launch {
+        game = launch;
+    }
+    let mut config = Config {
+        version: raw.version,
+        game,
+        korea,
+        gb,
+        mode: raw.mode,
+        ptt: raw.ptt,
+        joystick: raw.joystick,
+        command_ptt: raw.command_ptt,
+        command_joystick: raw.command_joystick,
+        channel_ptt: raw.channel_ptt,
+        channel_joystick: raw.channel_joystick,
+        long_press_ms: raw.long_press_ms,
+        chat_gesture: raw.chat_gesture,
+        command_gesture: raw.command_gesture,
+        command_gap_ms: raw.command_gap_ms,
+        command_lead_ms: raw.command_lead_ms,
+        send_keys: raw.send_keys,
+        require_focus: raw.require_focus,
+        cues: raw.cues,
+        cue_volume: raw.cue_volume,
+        audio_device: raw.audio_device,
+        silence_rms: raw.silence_rms,
+        max_record_ms: raw.max_record_ms,
+        stt: raw.stt,
+        token_floor: raw.token_floor,
+        command_max_extra: raw.command_max_extra,
+        mixed_max_extra: raw.mixed_max_extra,
+    };
+    config.normalize();
+    Ok((config, migrated))
+}
+
+#[derive(Deserialize)]
+struct RawConfig {
+    #[serde(default = "default_version")]
+    version: u32,
+    #[serde(default)]
+    game: Option<Game>,
+    #[serde(default)]
+    korea: Option<GameProfile>,
+    #[serde(default)]
+    gb: Option<GameProfile>,
+    #[serde(default)]
+    chat: Option<ChatSettings>,
+    #[serde(default)]
+    commands: Option<Vec<Command>>,
+    #[serde(default)]
+    next_id: Option<u64>,
+    #[serde(default)]
+    focus_title: Option<String>,
+    #[serde(default)]
+    mode: Mode,
+    #[serde(default = "default_ptt")]
+    ptt: String,
+    #[serde(default)]
+    joystick: Option<JoyBind>,
+    #[serde(default)]
+    command_ptt: String,
+    #[serde(default)]
+    command_joystick: Option<JoyBind>,
+    #[serde(default)]
+    channel_ptt: String,
+    #[serde(default)]
+    channel_joystick: Option<JoyBind>,
+    #[serde(default = "default_long_press")]
+    long_press_ms: u64,
+    #[serde(default = "default_chat_gesture")]
+    chat_gesture: Gesture,
+    #[serde(default = "default_command_gesture")]
+    command_gesture: Gesture,
+    #[serde(default = "default_command_gap")]
+    command_gap_ms: u64,
+    #[serde(default)]
+    command_lead_ms: u64,
+    #[serde(default)]
+    send_keys: bool,
+    #[serde(default = "default_true")]
+    require_focus: bool,
+    #[serde(default = "default_true")]
+    cues: bool,
+    #[serde(default = "default_cue_volume")]
+    cue_volume: f32,
+    #[serde(default)]
+    audio_device: Option<String>,
+    #[serde(default = "default_silence")]
+    silence_rms: f32,
+    #[serde(default = "default_max_record")]
+    max_record_ms: u64,
+    #[serde(default)]
+    stt: SttConfig,
+    #[serde(default = "default_floor")]
+    token_floor: f64,
+    #[serde(default = "default_command_extra")]
+    command_max_extra: usize,
+    #[serde(default = "default_mixed_extra")]
+    mixed_max_extra: usize,
+}
+
+/// How the process was started. `-mode` picks the sim. `--transcribe` stays a tool.
+#[derive(Debug)]
+pub enum Startup {
+    Gui { game: Option<Game> },
+    Transcribe { file: Option<String> },
+}
+
+pub fn parse_startup<I>(args: I) -> Result<Startup, String>
+where
+    I: IntoIterator<Item = String>,
+{
+    let mut game = None;
+    let mut transcribe = false;
+    let mut file = None;
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
+        if arg == "--transcribe" {
+            transcribe = true;
+            file = args.next();
+            continue;
+        }
+        if arg == "-mode" || arg == "--mode" {
+            let Some(value) = args.next() else {
+                return Err(usage("Missing the game after -mode. Use korea or gb."));
+            };
+            game = Some(parse_mode(&value)?);
+            continue;
+        }
+        if let Some(value) = arg
+            .strip_prefix("--mode=")
+            .or_else(|| arg.strip_prefix("-mode="))
+        {
+            game = Some(parse_mode(value)?);
+            continue;
+        }
+        return Err(usage(&format!("Unknown argument '{arg}'.")));
+    }
+    if transcribe {
+        if game.is_some() {
+            return Err(usage("-mode cannot be combined with --transcribe."));
+        }
+        return Ok(Startup::Transcribe { file });
+    }
+    Ok(Startup::Gui { game })
+}
+
+fn parse_mode(value: &str) -> Result<Game, String> {
+    Game::parse(value).ok_or_else(|| usage(&format!("Unknown game '{value}'. Use korea or gb.")))
+}
+
+fn usage(detail: &str) -> String {
+    format!("{detail}\nUsage: callsign [-mode korea|gb]\n       callsign --transcribe <file.wav>")
 }
 
 pub fn config_dir() -> PathBuf {
@@ -438,8 +797,8 @@ pub fn default_model_path() -> PathBuf {
     data_dir().join("models").join("ggml-tiny.en.bin")
 }
 
-pub fn export_commands(commands: &[Command]) -> Result<PathBuf, String> {
-    let path = config_dir().join("callsign-commands.json");
+pub fn export_commands(game: Game, commands: &[Command]) -> Result<PathBuf, String> {
+    let path = config_dir().join(format!("callsign-commands-{}.json", game.cli_name()));
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|err| err.to_string())?;
     }
@@ -772,5 +1131,159 @@ mod tests {
         assert_eq!(chat.active().unwrap().name, "All pilots");
         chat.profiles.truncate(1);
         assert!(chat.next_profile().is_none());
+    }
+
+    fn sequence<'a>(commands: &'a [Command], name: &str) -> &'a str {
+        commands
+            .iter()
+            .find(|command| command.name == name)
+            .unwrap()
+            .sequence
+            .as_str()
+    }
+
+    #[test]
+    fn starters_keep_a_different_command_menu_for_each_game() {
+        let config = Config::default();
+        assert_eq!(config.game, Game::Korea);
+        assert_eq!(sequence(config.commands(), "Command menu"), "tab");
+        assert_eq!(sequence(&config.gb.commands, "Command menu"), "grave");
+        assert_eq!(sequence(config.commands(), "Landing gear"), "g");
+        assert_eq!(sequence(&config.gb.commands, "Landing gear"), "g");
+    }
+
+    #[test]
+    fn a_partial_file_keeps_the_old_defaults() {
+        let (config, _) = parse_config("{}", None).unwrap();
+        assert_eq!(config.ptt, "scrolllock");
+        assert_eq!(config.command_gesture, Gesture::Hold);
+        assert_eq!(config.chat_gesture, Gesture::Tap);
+        assert!(config.require_focus);
+        assert!(config.cues);
+        assert_eq!(config.command_gap_ms, 100);
+        assert_eq!(config.long_press_ms, 700);
+        assert!((config.cue_volume - 0.12).abs() < 0.001);
+        assert_eq!(config.command_max_extra, 4);
+        assert_eq!(config.mixed_max_extra, 1);
+    }
+
+    #[test]
+    fn legacy_settings_stay_on_the_launched_game() {
+        let raw = r#"{
+            "version": 1,
+            "mode": "command",
+            "ptt": "f13",
+            "send_keys": true,
+            "focus_title": "My IL-2",
+            "chat": {
+                "profile": 1,
+                "profiles": [
+                    {"name": "All pilots", "open": "enter", "send": "enter", "abort": "escape"},
+                    {"name": "Squad", "open": "rctrl+enter", "send": "enter", "abort": "escape"}
+                ],
+                "char_delay_ms": 12,
+                "after_open_ms": 160,
+                "max_chars": 160
+            },
+            "commands": [
+                {"id": 7, "name": "Gear", "group": "Flight", "phrases": ["gear"], "sequence": "g", "enabled": true}
+            ],
+            "next_id": 8
+        }"#;
+        let (korea, note) = parse_config(raw, None).unwrap();
+        assert_eq!(korea.game, Game::Korea);
+        assert_eq!(korea.mode, Mode::Command);
+        assert_eq!(korea.ptt, "f13");
+        assert!(korea.send_keys);
+        assert_eq!(korea.focus_title(), "My IL-2");
+        assert_eq!(korea.chat().active().unwrap().name, "Squad");
+        assert_eq!(korea.commands().len(), 1);
+        assert_eq!(korea.commands()[0].name, "Gear");
+        assert_eq!(sequence(&korea.gb.commands, "Command menu"), "grave");
+        assert!(note.unwrap().contains("IL-2 Series: Korea"));
+
+        let (gb, _) = parse_config(raw, Some(Game::Gb)).unwrap();
+        assert_eq!(gb.game, Game::Gb);
+        assert_eq!(gb.commands().len(), 1);
+        assert_eq!(gb.commands()[0].name, "Gear");
+        assert_eq!(gb.focus_title(), "My IL-2");
+        assert_eq!(sequence(&gb.korea.commands, "Command menu"), "tab");
+        assert!(gb
+            .korea
+            .commands
+            .iter()
+            .any(|command| command.name == "Landing gear"));
+    }
+
+    #[test]
+    fn games_keep_separate_chat_and_commands_across_a_save() {
+        let mut config = Config::default();
+        config.chat_mut().profiles[0].name = "Everyone".into();
+        config.commands_mut()[0].sequence = "x".into();
+        config.set_game(Game::Gb);
+        assert_eq!(config.chat().profiles[0].name, "All pilots");
+        config.chat_mut().profiles[0].name = "All GB".into();
+        config.commands_mut()[0].sequence = "y".into();
+        config.set_game(Game::Korea);
+        assert_eq!(config.chat().profiles[0].name, "Everyone");
+        assert_eq!(config.commands()[0].sequence, "x");
+
+        let json = serde_json::to_value(&config).unwrap();
+        assert!(json.get("chat").is_none());
+        assert!(json.get("commands").is_none());
+        assert!(json.get("focus_title").is_none());
+        let (loaded, note) = parse_config(&json.to_string(), Some(Game::Gb)).unwrap();
+        assert!(note.is_none());
+        assert_eq!(loaded.game, Game::Gb);
+        assert_eq!(loaded.chat().profiles[0].name, "All GB");
+        assert_eq!(loaded.commands()[0].sequence, "y");
+        assert_eq!(loaded.korea.chat.profiles[0].name, "Everyone");
+        assert_eq!(loaded.korea.commands[0].sequence, "x");
+    }
+
+    #[test]
+    fn startup_flag_selects_the_game() {
+        assert!(matches!(
+            parse_startup(None::<String>).unwrap(),
+            Startup::Gui { game: None }
+        ));
+        match parse_startup(["-mode".into(), "korea".into()]).unwrap() {
+            Startup::Gui {
+                game: Some(Game::Korea),
+            } => {}
+            other => panic!("unexpected {other:?}"),
+        }
+        match parse_startup(["--mode".into(), "gb".into()]).unwrap() {
+            Startup::Gui {
+                game: Some(Game::Gb),
+            } => {}
+            other => panic!("unexpected {other:?}"),
+        }
+        match parse_startup(["-mode=gb".into()]).unwrap() {
+            Startup::Gui {
+                game: Some(Game::Gb),
+            } => {}
+            other => panic!("unexpected {other:?}"),
+        }
+        match parse_startup(["--mode=Korea".into()]).unwrap() {
+            Startup::Gui {
+                game: Some(Game::Korea),
+            } => {}
+            other => panic!("unexpected {other:?}"),
+        }
+        assert!(parse_startup(["-mode".into(), "dcs".into()]).is_err());
+        assert!(parse_startup(["-mode".into()]).is_err());
+        assert!(parse_startup(["--nope".into()]).is_err());
+        match parse_startup(["--transcribe".into(), "sample.wav".into()]).unwrap() {
+            Startup::Transcribe { file: Some(path) } => assert_eq!(path, "sample.wav"),
+            other => panic!("unexpected {other:?}"),
+        }
+        assert!(parse_startup([
+            "-mode".into(),
+            "korea".into(),
+            "--transcribe".into(),
+            "a.wav".into()
+        ])
+        .is_err());
     }
 }

@@ -200,8 +200,8 @@ mod tests {
         PlanInput {
             mode,
             text,
-            chat: &config.chat,
-            commands: &config.commands,
+            chat: config.chat(),
+            commands: config.commands(),
             token_floor: config.token_floor,
             command_max_extra: config.command_max_extra,
             mixed_max_extra: config.mixed_max_extra,
@@ -256,7 +256,7 @@ mod tests {
         let mut config = Config::default();
         config.command_lead_ms = 40;
         config.command_gap_ms = 80;
-        config.commands.push(Command {
+        config.commands_mut().push(Command {
             id: 9_000,
             name: "Request landing".into(),
             group: "Radio".into(),
@@ -276,7 +276,7 @@ mod tests {
             .collect();
         assert_eq!(delays, vec![40, 80, 80]);
 
-        config.commands.last_mut().unwrap().sequence = "tab, delay:120, 0".into();
+        config.commands_mut().last_mut().unwrap().sequence = "tab, delay:120, 0".into();
         let spaced = plan_action(&input(Mode::Command, "request landing", &config, false));
         let delays: Vec<u64> = spaced
             .steps
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn friendly_profile_uses_right_control() {
         let mut config = Config::default();
-        config.chat.profile = 1;
+        config.chat_mut().profile = 1;
         let dispatch = plan_action(&input(Mode::Chat, "on me", &config, false));
         assert!(dispatch.ok);
         let open = &dispatch.steps[0];

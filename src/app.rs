@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use crate::audio::AudioEngine;
 use crate::bus::WorkerEvent;
-use crate::config::{self, Command, Config, Gesture, JoyBind, Mode, SttEngine};
+use crate::config::{self, Command, Config, Game, Gesture, JoyBind, Mode, SttEngine};
 use crate::cues::{CueKind, CuePlayer};
 use crate::hotkey::{HotkeyHub, KeyRole};
 use crate::inject::InjectRequest;
@@ -115,6 +115,7 @@ pub struct CallsignApp {
     dirty: bool,
     last_edit: Instant,
     paint_while_hidden: bool,
+    titled_game: Option<Game>,
     event_tx: Sender<WorkerEvent>,
     event_rx: Receiver<WorkerEvent>,
     stt_tx: Sender<SttCommand>,
@@ -122,9 +123,9 @@ pub struct CallsignApp {
 }
 
 impl CallsignApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, launch_game: Option<Game>) -> Self {
         theme::install(&cc.egui_ctx);
-        let (config, warning) = Config::load();
+        let (config, notes) = Config::load(launch_game);
         let epoch = Arc::new(AtomicU64::new(1));
         let (event_tx, event_rx) = mpsc::channel();
         let (stt_tx, stt_rx) = mpsc::channel();
@@ -194,18 +195,32 @@ impl CallsignApp {
             dirty: false,
             last_edit: Instant::now(),
             paint_while_hidden: false,
+            titled_game: None,
             event_tx,
             event_rx,
             stt_tx,
             inject_tx,
         };
-        if let Some(warning) = warning {
+        if let Some(warning) = notes.problem {
             app.push_log(LogKind::Problem, warning);
         }
+        if let Some(migrated) = notes.migrated {
+            app.push_log(LogKind::System, migrated);
+        }
+        app.push_log(
+            LogKind::System,
+            format!("Game is {}.", app.config.game.label()),
+        );
         let mode_line = if app.config.send_keys {
-            "Key output is on. Callsign will type into a window titled IL-2.".into()
+            format!(
+                "Key output is on. Callsign will type into a window titled {}.",
+                app.config.focus_title()
+            )
         } else {
-            "Practice mode. Nothing is typed into IL-2 until key output is turned on.".into()
+            format!(
+                "Practice mode. Nothing is typed into {} until key output is turned on.",
+                app.config.game.label()
+            )
         };
         app.push_log(LogKind::System, mode_line);
         if app.config.stt.engine == SttEngine::Local
@@ -329,9 +344,21 @@ impl CallsignApp {
         self.dispatch_text(&line, Some(Mode::Command), false);
     }
 
+    pub(crate) fn set_game(&mut self, game: Game) {
+        if self.config.game == game {
+            return;
+        }
+        self.config.set_game(game);
+        self.command_open.clear();
+        self.command_category.clear();
+        self.confirm_clear_commands = false;
+        self.import_note.clear();
+        self.push_log(LogKind::System, format!("Game is {}.", game.label()));
+    }
+
     pub(crate) fn add_command(&mut self) {
         let id = self.config.alloc_id();
-        self.config.commands.push(Command {
+        self.config.commands_mut().push(Command {
             id,
             name: "New command".into(),
             group: "Flight".into(),
@@ -342,8 +369,8 @@ impl CallsignApp {
     }
 
     pub(crate) fn clear_commands(&mut self) {
-        let count = self.config.commands.len();
-        self.config.commands.clear();
+        let count = self.config.commands().len();
+        self.config.commands_mut().clear();
         self.command_open.clear();
         self.command_category.clear();
         self.confirm_clear_commands = false;
@@ -351,19 +378,24 @@ impl CallsignApp {
     }
 
     pub(crate) fn add_starter(&mut self) {
-        let added = merge_starter(&mut self.config.commands, &mut self.config.next_id);
+        let game = self.config.game;
+        let profile = self.config.active_mut();
+        let added = merge_starter(&mut profile.commands, &mut profile.next_id, game);
         self.push_log(
             LogKind::System,
             if added == 0 {
-                "Starter commands are already in the list.".into()
+                format!(
+                    "Starter commands for {} are already in the list.",
+                    game.label()
+                )
             } else {
-                format!("Added {added} starter commands.")
+                format!("Added {added} starter commands for {}.", game.label())
             },
         );
     }
 
     pub(crate) fn export_commands(&mut self) {
-        match config::export_commands(&self.config.commands) {
+        match config::export_commands(self.config.game, self.config.commands()) {
             Ok(path) => self.push_log(
                 LogKind::System,
                 format!("Exported commands to {}.", path.display()),
@@ -407,7 +439,7 @@ impl CallsignApp {
                     }
                     if let Some(existing) = self
                         .config
-                        .commands
+                        .commands_mut()
                         .iter_mut()
                         .find(|current| current.name == command.name)
                     {
@@ -419,7 +451,7 @@ impl CallsignApp {
                     } else {
                         let mut command = command;
                         command.id = self.config.alloc_id();
-                        self.config.commands.push(command);
+                        self.config.commands_mut().push(command);
                         added += 1;
                     }
                 }
@@ -484,6 +516,13 @@ impl CallsignApp {
         if !self.paint_while_hidden {
             ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaintWhileHidden);
             self.paint_while_hidden = true;
+        }
+        if self.titled_game != Some(self.config.game) {
+            self.titled_game = Some(self.config.game);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
+                "Callsign - {}",
+                self.config.game.label()
+            )));
         }
         if ctx.input(|input| input.viewport().close_requested()) && self.dirty {
             let _ = self.config.save();
@@ -600,17 +639,17 @@ impl CallsignApp {
     }
 
     fn toggle_channel(&mut self) {
-        let Some(next) = self.config.chat.next_profile() else {
+        let Some(next) = self.config.chat().next_profile() else {
             self.push_log(
                 LogKind::Problem,
                 "Add a second chat channel before that button can switch.".into(),
             );
             return;
         };
-        self.config.chat.profile = next;
+        self.config.chat_mut().profile = next;
         let name = self
             .config
-            .chat
+            .chat()
             .active()
             .map(|profile| profile.name.clone())
             .unwrap_or_else(|| "Chat".into());
@@ -813,8 +852,8 @@ impl CallsignApp {
         let dispatch = plan::plan_action(&PlanInput {
             mode,
             text,
-            chat: &self.config.chat,
-            commands: &self.config.commands,
+            chat: self.config.chat(),
+            commands: self.config.commands(),
             token_floor: self.config.token_floor,
             command_max_extra: self.config.command_max_extra,
             mixed_max_extra: self.config.mixed_max_extra,
@@ -837,7 +876,7 @@ impl CallsignApp {
         }
         let abort = if dispatch.cue == CueKind::ChatSent {
             self.config
-                .chat
+                .chat()
                 .active()
                 .and_then(|profile| keys::parse_sequence(&profile.abort).ok())
                 .unwrap_or_default()
@@ -850,8 +889,8 @@ impl CallsignApp {
             epoch: self.utterance,
             steps: dispatch.steps,
             abort,
-            char_delay_ms: self.config.chat.char_delay_ms,
-            focus_title: self.config.focus_title.clone(),
+            char_delay_ms: self.config.chat().char_delay_ms,
+            focus_title: self.config.focus_title().to_string(),
             require_focus: self.config.require_focus,
             headline: dispatch.headline,
             detail: dispatch.detail,

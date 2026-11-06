@@ -1,12 +1,14 @@
-//! Starter bindings from the IL-2 Great Battles printed defaults.
+//! Starter bindings for each sim.
 //!
-//! Korea uses the same control map unless a squadron has rebound it. Weapon
-//! releases and the numbered radio slots start disabled: a near miss should
-//! not drop ordnance, and an unbound radio slot should not swallow chat.
+//! Great Battles uses the printed defaults. Korea uses the same phrases, with
+//! the keys that differ on a stock Korea install. Weapon releases and the
+//! numbered radio slots start disabled: a near miss should not drop ordnance,
+//! and an unbound radio slot should not swallow chat. The two lists are
+//! stored apart, so editing one sim does not change the other.
 
-use crate::config::Command;
+use crate::config::{Command, Game};
 
-pub fn starter_commands() -> Vec<Command> {
+pub fn starter_commands(game: Game) -> Vec<Command> {
     let mut id = 1u64;
     let mut next =
         |name: &str, group: &str, phrases: &[&str], sequence: &str, enabled: bool| -> Command {
@@ -22,7 +24,7 @@ pub fn starter_commands() -> Vec<Command> {
             command
         };
 
-    vec![
+    let mut commands = vec![
         next("Radio 1", "Radio", &["radio one", "channel one"], "", false),
         next("Radio 2", "Radio", &["radio two", "channel two"], "", false),
         next(
@@ -154,12 +156,22 @@ pub fn starter_commands() -> Vec<Command> {
             "n",
             false,
         ),
-    ]
+    ];
+    if game == Game::Korea {
+        // Korea opens the commander's menu with Tab. Great Battles uses grave.
+        if let Some(menu) = commands
+            .iter_mut()
+            .find(|command| command.name == "Command menu")
+        {
+            menu.sequence = "tab".into();
+        }
+    }
+    commands
 }
 
-pub fn merge_starter(commands: &mut Vec<Command>, next_id: &mut u64) -> usize {
+pub fn merge_starter(commands: &mut Vec<Command>, next_id: &mut u64, game: Game) -> usize {
     let mut added = 0;
-    for mut starter in starter_commands() {
+    for mut starter in starter_commands(game) {
         if commands.iter().any(|command| command.name == starter.name) {
             continue;
         }

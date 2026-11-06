@@ -1,6 +1,8 @@
 # Callsign
 
-Callsign is a desktop companion for **IL-2 Sturmovik** (Great Battles, including Korea). It sits beside the simulator. Press a button and speak. It can type a chat line, or turn a short phrase into the keys the sim already uses for the radio, gear, flaps, and the rest of the cockpit.
+Callsign is a desktop companion for **IL-2 Sturmovik**. It sits beside the simulator. Press a button and speak. It can type a chat line, or turn a short phrase into the keys the sim already uses for the radio, gear, flaps, and the rest of the cockpit.
+
+Setup has a game menu for **IL-2 Series: Korea** and **IL-2 Great Battles**. Each game keeps its own chat channels and command list. The talk button, microphone, and speech engine stay shared. A shortcut picks the game before the window opens: `callsign -mode korea` or `callsign -mode gb` (on Windows, `callsign.exe -mode korea`). The choice is saved, so the next launch without a flag opens the same game.
 
 It is not an overlay inside the headset. The microphone is the PC input (a headset mic that the operating system can see works, including some VR mics). Cue tones play on the default output, which SteamVR usually mirrors into the headset.
 
@@ -37,7 +39,7 @@ The header switches three modes:
 - **Commands** matches the words, in order, to a phrase on the Commands page and presses that key sequence. "Gear up" presses G. "Request landing" can press Tab, then 0, then 8, with a short wait between them. A phrase with no keys is reported and nothing is typed. Short words such as "up" and "down" have to be exact. Longer words allow a small mishear.
 - **Mixed** treats a line as a command only when it is almost nothing but the command. A sentence goes to chat. An unbound command is reported rather than typed into chat.
 
-Weapons start disabled, and eject and the gun trigger are not in the list. A misheard word should not drop ordnance. The printed Great Battles defaults are a starting point. Korea uses that map unless you have changed it. Open Controls in the sim and check the keys before you enable key output.
+Weapons start disabled, and eject and the gun trigger are not in the list. A misheard word should not drop ordnance. A new Great Battles list starts from the printed defaults. A new Korea list uses the same phrases, with Tab for the command menu. Open Controls in the sim and check the keys before you enable key output. Changing one game does not change the other.
 
 ## Run it
 
@@ -64,6 +66,14 @@ cargo build --release
 ```
 
 The program is one file, `target\release\callsign.exe`. SDL is linked into that file, so the build does not leave an `SDL2.dll` beside it. The speech engine is linked in the same way. The keycap in `assets/icon.png` is embedded in the executable, and the same image is the window and taskbar icon. The model file Setup downloads is still separate, and so are Windows' own libraries. On Linux, from the project folder, `cargo run --release` does the same job.
+
+A batch file can open the sim's own commands and chat:
+
+```bat
+start "" "C:\src\Callsign\target\release\callsign.exe" -mode korea
+```
+
+Use `-mode gb` for Great Battles. `--mode korea` and `-mode=gb` work too.
 
 The first release build compiles the local speech engine and takes a while. To skip that and use only a speech server:
 
@@ -97,11 +107,11 @@ The file must be 16-bit PCM WAV.
 
 ## Where settings live
 
-Callsign writes its own config the first time you change something. On Linux that is under the user config directory (`callsign/config.json`, readable only by you). Commands can be exported and imported from the Commands page. That page groups them by category and has a search box for the name, a phrase, or the keys. A log of what was heard and sent is written next to the config.
+Callsign writes its own config the first time you change something. On Linux that is under the user config directory (`callsign/config.json`, readable only by you). Korea and Great Battles each have a chat setup, a command list, and a window title in that file. An older file, from before the game menu, is kept as the profile for the game you launch (`-mode korea` or `-mode gb`). With no flag, it is kept for Korea, and Great Battles starts from the printed defaults. Commands can be exported and imported from the Commands page. Export writes `callsign-commands-korea.json` or `callsign-commands-gb.json` beside the config. That page groups them by category and has a search box for the name, a phrase, or the keys. A log of what was heard and sent is written next to the config.
 
 ## Assumptions
 
-- Callsign sends keystrokes into a window whose title contains "IL-2". It checks the focused window before it types, and it will not type if that check fails.
+- Callsign sends keystrokes into a window whose title contains the text in Setup. The default is "IL-2", which matches both sims. Each game can use its own text, such as "Korea", when both might be open. It checks the focused window before it types, and it will not type if that check fails.
 - Left and right modifiers are written out (`lctrl`, `rctrl`, `lalt`, `ralt`). A bare `ctrl` is the left key, which is the wrong key for friendly chat.
 - Wheel brakes are omitted. They are a hold, not a tap. Parking brake is Left Shift+Slash.
 - Numbered radio slots start empty. Put your own key sequence in before you enable them.

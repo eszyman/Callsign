@@ -4,7 +4,7 @@
 use egui::{Color32, CornerRadius, Layout, RichText, Stroke, TextStyle, Vec2};
 
 use crate::app::{CallsignApp, LogKind, Page};
-use crate::config::{Command, Gesture, Mode, SttEngine};
+use crate::config::{Command, Game, Gesture, Mode, SttEngine};
 use crate::cues::CueKind;
 use crate::keys;
 use crate::phase::{self, Phase};
@@ -49,7 +49,11 @@ fn header(app: &mut CallsignApp, ui: &mut egui::Ui, wide: bool) {
                             .extra_letter_spacing(1.8)
                             .color(theme::TEXT),
                     );
-                    ui.label(RichText::new("IL-2 voice").size(12.5).color(theme::FAINT));
+                    ui.label(
+                        RichText::new(app.config.game.label())
+                            .size(12.5)
+                            .color(theme::FAINT),
+                    );
                 });
                 ui.add_space(18.0);
                 segment(ui, &mut app.config.mode);
@@ -262,7 +266,7 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
         let command_key = command_label(&app.config.command_ptt);
         let channel_name = app
             .config
-            .chat
+            .chat()
             .active()
             .map(|profile| profile.name.clone())
             .unwrap_or_else(|| "Chat".into());
@@ -295,10 +299,10 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
         }
         ui.add_space(10.0);
         if app.config.send_keys {
-            let title = if app.config.focus_title.trim().is_empty() {
+            let title = if app.config.focus_title().trim().is_empty() {
                 "the focused window".to_string()
             } else {
-                format!("a window titled {}", app.config.focus_title)
+                format!("a window titled {}", app.config.focus_title())
             };
             ui.label(
                 RichText::new(format!("Live. Keys go to {title}."))
@@ -307,9 +311,12 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
             );
         } else {
             ui.label(
-                RichText::new("Practice mode. Nothing is typed into IL-2.")
-                    .color(theme::GREEN)
-                    .size(13.0),
+                RichText::new(format!(
+                    "Practice mode. Nothing is typed into {}.",
+                    app.config.game.label()
+                ))
+                .color(theme::GREEN)
+                .size(13.0),
             );
         }
     });
@@ -409,45 +416,47 @@ fn outcome_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
 fn chat_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         section(ui, "Chat channels");
+        let other = app.config.game.other().label();
         ui.label(
-            RichText::new(
-                "All pilots opens with Enter. Friendly chat opens with Right Ctrl+Enter. Type the sides as lctrl and rctrl — a single ctrl would hit the wrong key, and the recorder cannot tell left from right on its own.",
-            )
+            RichText::new(format!(
+                "These channels are saved for {} only. {other} keeps its own. All pilots opens with Enter and Friendly chat opens with Right Ctrl+Enter until you change the keys. Type the sides as lctrl and rctrl — a single ctrl would hit the wrong key, and the recorder cannot tell left from right on its own.",
+                app.config.game.label()
+            ))
             .color(theme::MUTED),
         );
         ui.add_space(12.0);
-        let count = app.config.chat.profiles.len();
+        let count = app.config.chat().profiles.len();
         for index in 0..count {
-            let selected = app.config.chat.profile == index;
+            let selected = app.config.chat().profile == index;
             let frame = theme::card().stroke(Stroke::new(
                 if selected { 1.5 } else { 1.0 },
                 if selected { theme::AMBER } else { theme::LINE },
             ));
             frame.show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    let name = app.config.chat.profiles[index].name.clone();
+                    let name = app.config.chat().profiles[index].name.clone();
                     if ui
                         .selectable_label(selected, RichText::new(format!("Use {name}")).color(theme::AMBER))
                         .clicked()
                     {
-                        app.config.chat.profile = index;
+                        app.config.chat_mut().profile = index;
                     }
                 });
                 ui.add_space(8.0);
-                labeled(ui, "Name", &mut app.config.chat.profiles[index].name);
-                labeled(ui, "Open", &mut app.config.chat.profiles[index].open);
-                labeled(ui, "Send", &mut app.config.chat.profiles[index].send);
-                labeled(ui, "Abort", &mut app.config.chat.profiles[index].abort);
-                sequence_preview(ui, &app.config.chat.profiles[index].open);
+                labeled(ui, "Name", &mut app.config.chat_mut().profiles[index].name);
+                labeled(ui, "Open", &mut app.config.chat_mut().profiles[index].open);
+                labeled(ui, "Send", &mut app.config.chat_mut().profiles[index].send);
+                labeled(ui, "Abort", &mut app.config.chat_mut().profiles[index].abort);
+                sequence_preview(ui, &app.config.chat().profiles[index].open);
             });
             ui.add_space(10.0);
         }
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.add(egui::Slider::new(&mut app.config.chat.char_delay_ms, 0u64..=40).text("ms between letters"));
-            ui.add(egui::Slider::new(&mut app.config.chat.after_open_ms, 40u64..=400).text("ms after opening chat"));
+            ui.add(egui::Slider::new(&mut app.config.chat_mut().char_delay_ms, 0u64..=40).text("ms between letters"));
+            ui.add(egui::Slider::new(&mut app.config.chat_mut().after_open_ms, 40u64..=400).text("ms after opening chat"));
         });
-        ui.add(egui::Slider::new(&mut app.config.chat.max_chars, 40usize..=240).text("character cap"));
+        ui.add(egui::Slider::new(&mut app.config.chat_mut().max_chars, 40usize..=240).text("character cap"));
         ui.add_space(8.0);
         let idle = app.phase == Phase::Idle;
         if ui
@@ -463,12 +472,8 @@ fn chat_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
 fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         section(ui, "Voice to keys");
-        ui.label(
-            RichText::new(
-                "A phrase matches when its words show up in order. Short words have to be exact. These keys are the printed IL-2 Great Battles defaults — open Controls in the sim and check them before you turn key output on. Weapons start off: a misheard word should not drop ordnance. Eject and the gun trigger are not in this list.",
-            )
-            .color(theme::MUTED),
-        );
+        let game = app.config.game;
+        ui.label(RichText::new(command_intro(game)).color(theme::MUTED));
         ui.add_space(10.0);
         ui.horizontal(|ui| {
             let width = (ui.available_width() - 92.0).max(140.0);
@@ -477,7 +482,8 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
                     .hint_text("gear up")
                     .desired_width(width),
             );
-            let enter = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+            let enter =
+                response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
             let idle = app.phase == Phase::Idle;
             if (ui.add_enabled(idle, egui::Button::new("Test")).clicked() || enter) && idle {
                 app.run_command_test();
@@ -491,7 +497,7 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             if ui.button("Add starter set").clicked() {
                 app.add_starter();
             }
-            let has_commands = !app.config.commands.is_empty();
+            let has_commands = !app.config.commands().is_empty();
             if ui
                 .add_enabled(has_commands, egui::Button::new("Remove all"))
                 .clicked()
@@ -502,7 +508,7 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
                 app.export_commands();
             }
         });
-        if app.confirm_clear_commands && !app.config.commands.is_empty() {
+        if app.confirm_clear_commands && !app.config.commands().is_empty() {
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new("Remove every command?")
@@ -550,7 +556,7 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
                 .desired_width(f32::INFINITY),
         );
         let mut groups: Vec<String> = Vec::new();
-        for command in &app.config.commands {
+        for command in app.config.commands() {
             if !groups.iter().any(|group| group == &command.group) {
                 groups.push(command.group.clone());
             }
@@ -602,14 +608,14 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             }
             let mut indexes: Vec<usize> = app
                 .config
-                .commands
+                .commands()
                 .iter()
                 .enumerate()
                 .filter(|(_, command)| command.group == *group && command_matches(command, &query))
                 .map(|(index, _)| index)
                 .collect();
             indexes.sort_by(|&left, &right| {
-                let commands = &app.config.commands;
+                let commands = app.config.commands();
                 commands[left]
                     .name
                     .to_lowercase()
@@ -621,7 +627,7 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             }
         }
         let shown: usize = visible.iter().map(|(_, indexes)| indexes.len()).sum();
-        let total = app.config.commands.len();
+        let total = app.config.commands().len();
         let count = if shown == total {
             format!("{total} commands, grouped by category")
         } else {
@@ -643,7 +649,7 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             );
             ui.add_space(4.0);
             for index in indexes {
-                let id = app.config.commands[index].id;
+                let id = app.config.commands()[index].id;
                 let open = force_open || app.command_open.contains(&id);
                 ui.push_id(id, |ui| {
                     command_row(app, ui, index, open, force_open, &mut remove);
@@ -652,7 +658,7 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             }
         }
         if let Some(id) = remove {
-            app.config.commands.retain(|command| command.id != id);
+            app.config.commands_mut().retain(|command| command.id != id);
             app.command_open.remove(&id);
         }
     });
@@ -666,11 +672,11 @@ fn command_row(
     force_open: bool,
     remove: &mut Option<u64>,
 ) {
-    let id = app.config.commands[index].id;
+    let id = app.config.commands()[index].id;
     ui.horizontal(|ui| {
-        ui.checkbox(&mut app.config.commands[index].enabled, "");
-        let name = app.config.commands[index].name.clone();
-        let phrases = app.config.commands[index].phrases.join(", ");
+        ui.checkbox(&mut app.config.commands_mut()[index].enabled, "");
+        let name = app.config.commands()[index].name.clone();
+        let phrases = app.config.commands()[index].phrases.join(", ");
         ui.label(RichText::new(name).color(theme::TEXT))
             .on_hover_text(phrases);
         ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
@@ -682,7 +688,7 @@ fn command_row(
                 }
             }
             ui.label(
-                RichText::new(command_keys(&app.config.commands[index].sequence))
+                RichText::new(command_keys(&app.config.commands()[index].sequence))
                     .size(12.5)
                     .color(theme::MUTED),
             );
@@ -691,19 +697,19 @@ fn command_row(
     if open {
         theme::card().show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(&mut app.config.commands[index].enabled, "Enabled");
+                ui.checkbox(&mut app.config.commands_mut()[index].enabled, "Enabled");
                 if ui.button("Remove").clicked() {
                     *remove = Some(id);
                 }
             });
-            labeled(ui, "Name", &mut app.config.commands[index].name);
-            labeled(ui, "Group", &mut app.config.commands[index].group);
+            labeled(ui, "Name", &mut app.config.commands_mut()[index].name);
+            labeled(ui, "Group", &mut app.config.commands_mut()[index].group);
             ui.label(
                 RichText::new("Phrases, one per line")
                     .size(12.0)
                     .color(theme::FAINT),
             );
-            let mut blob = app.config.commands[index].phrases.join("\n");
+            let mut blob = app.config.commands()[index].phrases.join("\n");
             let changed = ui
                 .add(
                     egui::TextEdit::multiline(&mut blob)
@@ -717,11 +723,11 @@ fn command_row(
                 } else {
                     blob.split('\n').map(|line| line.to_string()).collect()
                 };
-                app.config.commands[index].phrases = phrases;
+                app.config.commands_mut()[index].phrases = phrases;
             }
-            labeled_mono(ui, "Keys", &mut app.config.commands[index].sequence);
-            sequence_preview(ui, &app.config.commands[index].sequence);
-            if app.config.commands[index].sequence.trim().is_empty() {
+            labeled_mono(ui, "Keys", &mut app.config.commands_mut()[index].sequence);
+            sequence_preview(ui, &app.config.commands()[index].sequence);
+            if app.config.commands()[index].sequence.trim().is_empty() {
                 ui.label(
                     RichText::new("Unbound. A match is reported and nothing is typed.")
                         .size(12.5)
@@ -758,8 +764,35 @@ fn command_matches(command: &Command, query: &str) -> bool {
     query.split_whitespace().all(|word| haystack.contains(word))
 }
 
+fn command_intro(game: Game) -> String {
+    let starter = match game {
+        Game::Gb => "A new list starts from the printed Great Battles defaults.",
+        Game::Korea => "A new list starts from the Korea starter. The command menu there is Tab.",
+    };
+    format!(
+        "A phrase matches when its words show up in order. Short words have to be exact. This list is saved for {} only. {} keeps its own commands. {starter} Open Controls in the sim and check the keys before you turn key output on. Weapons start off: a misheard word should not drop ordnance. Eject and the gun trigger are not in this list.",
+        game.label(),
+        game.other().label()
+    )
+}
+
 fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().show(ui, |ui| {
+        section(ui, "Game");
+        ui.label(
+            RichText::new(
+                "Commands and chat are stored separately for each game. The talk button, microphone, and speech engine stay shared. Start ready for one sim with callsign -mode korea or callsign -mode gb.",
+            )
+            .color(theme::MUTED),
+        );
+        ui.add_space(8.0);
+        game_picker(app, ui);
+        ui.label(
+            RichText::new("The window title further down is saved with this game.")
+                .size(12.5)
+                .color(theme::FAINT),
+        );
+        ui.add_space(18.0);
         section(ui, "Talk button");
         ui.label(
             RichText::new(
@@ -895,7 +928,7 @@ fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
         }
         let channel_name = app
             .config
-            .chat
+            .chat()
             .active()
             .map(|profile| profile.name.clone())
             .unwrap_or_else(|| "Chat".into());
@@ -1035,15 +1068,18 @@ fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
         labeled(ui, "Server model", &mut app.config.stt.api_model);
         ui.add_space(18.0);
         section(ui, "Injection");
-        ui.checkbox(&mut app.config.send_keys, "Send keys to IL-2");
+        ui.checkbox(
+            &mut app.config.send_keys,
+            format!("Send keys to {}", app.config.game.label()),
+        );
         ui.label(
             RichText::new(
-                "Off until you turn it on. Callsign tries to focus a window whose title contains the text below, then checks it still has focus before typing.",
+                "Off until you turn it on. Callsign tries to focus a window whose title contains the text below, then checks it still has focus before typing. That title is saved with the game selected above.",
             )
             .color(theme::MUTED)
             .size(13.0),
         );
-        labeled(ui, "Window title", &mut app.config.focus_title);
+        labeled(ui, "Window title", app.config.focus_title_mut());
         ui.checkbox(
             &mut app.config.require_focus,
             "Refuse to type if that window is not focused",
@@ -1155,6 +1191,24 @@ fn gesture_strip(ui: &mut egui::Ui, hold: bool) {
         "A short tick means the next press will send. Hold that press and the line is dropped."
     };
     ui.label(RichText::new(note).size(12.0).color(theme::FAINT));
+}
+
+fn game_picker(app: &mut CallsignApp, ui: &mut egui::Ui) {
+    let current = app.config.game;
+    let mut picked = current;
+    egui::ComboBox::from_id_salt("game-select")
+        .selected_text(current.label())
+        .width(280.0)
+        .show_ui(ui, |ui| {
+            for game in [Game::Korea, Game::Gb] {
+                if ui.selectable_label(picked == game, game.label()).clicked() {
+                    picked = game;
+                }
+            }
+        });
+    if picked != current {
+        app.set_game(picked);
+    }
 }
 
 fn gesture_picker(ui: &mut egui::Ui, gesture: &mut Gesture) {

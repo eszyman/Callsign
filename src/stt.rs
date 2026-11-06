@@ -74,7 +74,7 @@ pub fn transcribe_wav_file(path: &Path) -> Result<String, String> {
     let bytes = fs::read(path).map_err(|err| err.to_string())?;
     let pcm = wav::decode_wav(&bytes)?;
     let samples = resample::resample_linear(&pcm.samples, pcm.sample_rate, 16_000);
-    let config = Config::load().0;
+    let config = Config::load(None).0;
     let settings = settings_from(&config);
     let mut cache = ModelCache::new();
     transcribe(&pad(&samples), &settings, &mut cache)

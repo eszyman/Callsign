@@ -37,7 +37,7 @@ The header switches three modes:
 - **Commands** matches the words, in order, to a phrase on the Commands page and presses that key sequence. "Gear up" presses G. "Request landing" can press Tab, then 0, then 8, with a short wait between them. A phrase with no keys is reported and nothing is typed. Short words such as "up" and "down" have to be exact. Longer words allow a small mishear.
 - **Mixed** treats a line as a command only when it is almost nothing but the command. A sentence goes to chat. An unbound command is reported rather than typed into chat.
 
-Weapons in the starter set start disabled, and eject and the gun trigger are not in that list. A misheard word should not drop ordnance. The printed Great Battles defaults are a starting point. Korea uses a different keyboard, in the file described below. Open Controls in the sim and check the keys before you enable key output.
+Weapons in the starter set start disabled, and eject and the gun trigger are not in that list. A misheard word should not drop ordnance. The printed Great Battles defaults are a starting point. The Korea keyboard is a separate file, described below. Open Controls in the sim and check the keys before you enable key output.
 
 ## Run it
 
@@ -101,19 +101,17 @@ Callsign writes its own config the first time you change something. On Linux tha
 
 ## Korea commands
 
-`commands/il2-korea.json` is the IL-2 Sturmovik: Korea default keyboard. It is not the Great Battles starter set. Add starter set is still that shorter in-app list.
+`commands/Korea-commands.json` is the IL-2 Sturmovik: Korea keyboard, ready to import. A release should ship that file next to the executable, under the same name.
 
-The bindings are the Quebec Air Force IL-2 Korea key map, version 1.03, last updated 29 June 2026. A release should ship this JSON next to the executable.
+On the Commands page, choose Browse, pick `Korea-commands.json`, and Import. Import matches a command by name and replaces its phrases and keys. A name that is not already in the list is added. Add starter set is still the shorter Great Battles list. It does not load this file.
 
-On the Commands page, choose Browse, pick `il2-korea.json`, and Import. Import matches a command by name and replaces its group, phrases, keys, and enabled flag. A name that is not already there is added. If the Great Battles starter is already loaded, rows with the same name are updated and the rest are added, so check the list afterwards. Korea moved several keys. Autopilot is Left Alt+A, not A. Bomb release is Left Shift+Space, and rockets are Left Ctrl+Space. B is the air brake.
+The file is the Korea map as flown, including stores, flares, gunner orders, and bailout. Those rows are enabled in the file. Key output in Setup still starts off, so nothing is typed until you turn that on. A few rows have an empty key sequence and stay disabled. Those are axes, or the second half of a control that has no single key. Wheel brakes are in the file. Callsign taps the key. It does not hold it down.
 
-Weapons, gunner orders, fuel dump, drop tanks, and jet boosters start disabled. The gun trigger, eject, and gunner bail out are not in the file. Wheel brakes (S, A, and D) and the held throttle, propeller, and radiator keys are omitted, because Callsign taps a key and does not hold it. Where the map binds both Windows keys, the file sends the left one. Gunsight, flare, and handgun keys are not in the file. Right Alt+4 is labeled the same as close fire range, so that gunner row was left out.
-
-Open Controls in the sim and check a binding before you rely on it. A squadron that has rebound the keyboard will not match this file.
+Open Controls in the sim and check a binding before you rely on the phrase. A squadron that has rebound the keyboard will not match this file.
 
 ## Assumptions
 
 - Callsign sends keystrokes into a window whose title contains "IL-2". It checks the focused window before it types, and it will not type if that check fails.
 - Left and right modifiers are written out (`lctrl`, `rctrl`, `lalt`, `ralt`). A bare `ctrl` is the left key, which is the wrong key for friendly chat.
-- Wheel brakes are omitted. They are a hold, not a tap. Parking brake in the Great Battles starter is Left Shift+Slash. In the Korea file it is Left Shift+W.
-- Numbered radio slots in the starter set start empty. Put your own key sequence in before you enable them.
+- Wheel brakes are omitted from the starter set. They are a hold, not a tap. Parking brake in that set is Left Shift+Slash. The Korea file uses Left Shift+W and includes the brake keys as a tap.
+- Numbered radio slots in the starter set start empty. Put your own key sequence in before you enable them. The Korea file binds the digits.

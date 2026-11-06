@@ -1,7 +1,7 @@
 //! Starter bindings from the IL-2 Great Battles printed defaults.
 //!
-//! Korea uses a different keyboard. Import `commands/il2-korea.json` for that
-//! map. Weapon releases and the numbered radio slots start disabled: a near
+//! Korea uses a different keyboard. Import `commands/Korea-commands.json` for
+//! that map. Weapon releases and the numbered radio slots start disabled: a near
 //! miss should not drop ordnance, and an unbound radio slot should not swallow
 //! chat.
 

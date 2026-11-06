@@ -254,6 +254,20 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
             ui.label(RichText::new(err).size(12.5).color(theme::RED));
         }
         let command_key = command_label(&app.config.command_ptt);
+        let channel_name = app
+            .config
+            .chat
+            .active()
+            .map(|profile| profile.name.clone())
+            .unwrap_or_else(|| "Chat".into());
+        ui.add_space(8.0);
+        ui.label(
+            RichText::new("CHAT")
+                .size(11.0)
+                .color(theme::FAINT)
+                .extra_letter_spacing(1.1),
+        );
+        ui.label(RichText::new(channel_name).color(theme::TEXT).size(16.0));
         if command_key.is_some() || app.config.command_joystick.is_some() {
             ui.add_space(8.0);
             ui.label(
@@ -848,6 +862,61 @@ fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             }
         }
         ui.add_space(18.0);
+        section(ui, "Chat channel");
+        ui.label(
+            RichText::new(
+                "One press flips the chat line between All pilots and Friendly. It does not start listening. Use a different key and a different stick button from the talk and commands controls.",
+            )
+            .color(theme::MUTED),
+        );
+        ui.add_space(8.0);
+        labeled(ui, "Keyboard", &mut app.config.channel_ptt);
+        match command_label(&app.config.channel_ptt) {
+            Some(label) => {
+                ui.label(RichText::new(label).color(theme::GREEN).size(13.0));
+            }
+            None if app.config.channel_ptt.trim().is_empty() => {
+                ui.label(RichText::new("Not set").color(theme::FAINT).size(13.0));
+            }
+            None => {
+                ui.label(
+                    RichText::new("That key isn't recognized.").color(theme::RED).size(13.0),
+                );
+            }
+        }
+        if let Some(err) = app.hotkeys.channel_error() {
+            ui.label(RichText::new(err).color(theme::RED).size(13.0));
+        }
+        let channel_name = app
+            .config
+            .chat
+            .active()
+            .map(|profile| profile.name.clone())
+            .unwrap_or_else(|| "Chat".into());
+        ui.label(
+            RichText::new(format!("Now {channel_name}"))
+                .color(theme::AMBER)
+                .size(13.0),
+        );
+        ui.add_space(8.0);
+        stick_binder(app, ui, crate::app::StickCapture::Channel);
+        if same_stick(&app.config.joystick, &app.config.channel_joystick) {
+            ui.label(
+                RichText::new("That stick button is also the talk button. The talk button wins.")
+                    .color(theme::AMBER)
+                    .size(13.0),
+            );
+        }
+        if same_stick(&app.config.command_joystick, &app.config.channel_joystick) {
+            ui.label(
+                RichText::new(
+                    "That stick button is also the commands button. The commands button wins.",
+                )
+                .color(theme::AMBER)
+                .size(13.0),
+            );
+        }
+        ui.add_space(18.0);
         section(ui, "Microphone");
         ui.label(
             RichText::new(
@@ -1255,6 +1324,7 @@ fn stick_binder(app: &mut CallsignApp, ui: &mut egui::Ui, target: crate::app::St
                 match target {
                     crate::app::StickCapture::Talk => app.config.joystick = None,
                     crate::app::StickCapture::Command => app.config.command_joystick = None,
+                    crate::app::StickCapture::Channel => app.config.channel_joystick = None,
                 }
                 if app.listen_stick == Some(target) {
                     app.listen_stick = None;
@@ -1264,6 +1334,7 @@ fn stick_binder(app: &mut CallsignApp, ui: &mut egui::Ui, target: crate::app::St
         let bound = match target {
             crate::app::StickCapture::Talk => app.config.joystick.as_ref(),
             crate::app::StickCapture::Command => app.config.command_joystick.as_ref(),
+            crate::app::StickCapture::Channel => app.config.channel_joystick.as_ref(),
         };
         if let Some(joy) = bound {
             ui.label(

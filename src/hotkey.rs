@@ -1,13 +1,20 @@
-//! Talk and command keys. Both are released while a text field is focused
-//! so that field can still be typed into.
+//! Talk, command, and chat-channel keys. They are released while a text
+//! field is focused so that field can still be typed into.
 
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 
 use crate::keys::{self, Chord};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyRole {
+    Talk,
+    Command,
+    Channel,
+}
+
 pub struct KeyEdge {
-    pub command: bool,
+    pub role: KeyRole,
     pub down: bool,
 }
 
@@ -33,6 +40,7 @@ pub struct HotkeyHub {
     manager: Option<GlobalHotKeyManager>,
     talk: Slot,
     command: Slot,
+    channel: Slot,
     suspended: bool,
     manager_error: Option<String>,
 }
@@ -44,6 +52,7 @@ impl HotkeyHub {
                 manager: Some(manager),
                 talk: Slot::empty(),
                 command: Slot::empty(),
+                channel: Slot::empty(),
                 suspended: false,
                 manager_error: None,
             },
@@ -51,6 +60,7 @@ impl HotkeyHub {
                 manager: None,
                 talk: Slot::empty(),
                 command: Slot::empty(),
+                channel: Slot::empty(),
                 suspended: false,
                 manager_error: Some(format!("Global keys aren't available. {err}")),
             },
@@ -65,19 +75,20 @@ impl HotkeyHub {
         self.command.error.as_deref()
     }
 
+    pub fn channel_error(&self) -> Option<&str> {
+        self.channel.error.as_deref()
+    }
+
     pub fn set_talk(&mut self, binding: Result<Chord, String>) {
-        self.set_slot(false, binding);
+        self.set_slot(KeyRole::Talk, Some(binding));
     }
 
     pub fn set_command(&mut self, binding: Option<Result<Chord, String>>) {
-        match binding {
-            None => {
-                self.command.binding = None;
-                self.command.error = None;
-                self.sync();
-            }
-            Some(result) => self.set_slot(true, result),
-        }
+        self.set_slot(KeyRole::Command, binding);
+    }
+
+    pub fn set_channel(&mut self, binding: Option<Result<Chord, String>>) {
+        self.set_slot(KeyRole::Channel, binding);
     }
 
     pub fn set_suspended(&mut self, suspended: bool) {
@@ -94,10 +105,12 @@ impl HotkeyHub {
             if self.suspended {
                 continue;
             }
-            let command = if self.command.id == Some(event.id) {
-                true
-            } else if self.talk.id == Some(event.id) {
-                false
+            let role = if self.talk.id == Some(event.id) {
+                KeyRole::Talk
+            } else if self.command.id == Some(event.id) {
+                KeyRole::Command
+            } else if self.channel.id == Some(event.id) {
+                KeyRole::Channel
             } else {
                 continue;
             };
@@ -105,30 +118,30 @@ impl HotkeyHub {
             if !down && event.state != HotKeyState::Released {
                 continue;
             }
-            edges.push(KeyEdge { command, down });
+            edges.push(KeyEdge { role, down });
         }
         edges
     }
 
-    fn set_slot(&mut self, command: bool, binding: Result<Chord, String>) {
-        let slot = if command {
-            &mut self.command
-        } else {
-            &mut self.talk
-        };
-        if self.manager.is_none() {
-            slot.binding = binding.ok();
-            return;
-        }
-        match binding {
-            Ok(chord) => {
-                slot.binding = Some(chord);
-                slot.error = None;
-            }
-            Err(err) => {
+    fn set_slot(&mut self, role: KeyRole, binding: Option<Result<Chord, String>>) {
+        let parsed = match binding {
+            None => None,
+            Some(Ok(chord)) => Some(chord),
+            Some(Err(err)) => {
+                let slot = self.slot_mut(role);
                 slot.binding = None;
                 slot.error = Some(err);
+                self.sync();
+                return;
             }
+        };
+        {
+            let slot = self.slot_mut(role);
+            slot.binding = parsed;
+            slot.error = None;
+        }
+        if self.manager.is_none() {
+            return;
         }
         self.sync();
     }
@@ -136,43 +149,69 @@ impl HotkeyHub {
     fn sync(&mut self) {
         let talk_key = Self::take_registered(&mut self.talk);
         let command_key = Self::take_registered(&mut self.command);
+        let channel_key = Self::take_registered(&mut self.channel);
         if let Some(manager) = self.manager.as_ref() {
-            if let Some(hotkey) = talk_key {
-                let _ = manager.unregister(hotkey);
-            }
-            if let Some(hotkey) = command_key {
+            for hotkey in [talk_key, command_key, channel_key].into_iter().flatten() {
                 let _ = manager.unregister(hotkey);
             }
         }
         if self.suspended || self.manager.is_none() {
             return;
         }
-        let duplicate = match (&self.talk.binding, &self.command.binding) {
-            (Some(talk), Some(command)) => talk == command,
-            _ => false,
+        self.note_duplicate(
+            KeyRole::Command,
+            self.same_binding(KeyRole::Talk, KeyRole::Command),
+            "Use a different key from the talk button.",
+        );
+        let channel_clash = if self.same_binding(KeyRole::Talk, KeyRole::Channel) {
+            Some("Use a different key from the talk button.")
+        } else if self.same_binding(KeyRole::Command, KeyRole::Channel) {
+            Some("Use a different key from the commands button.")
+        } else {
+            None
         };
-        if duplicate {
-            self.command.error = Some("Use a different key from the talk button.".into());
-        } else if self.command.error.as_deref() == Some("Use a different key from the talk button.")
-        {
-            self.command.error = None;
+        self.note_duplicate(
+            KeyRole::Channel,
+            channel_clash.is_some(),
+            channel_clash.unwrap_or(""),
+        );
+        self.register(KeyRole::Talk);
+        if !self.same_binding(KeyRole::Talk, KeyRole::Command) {
+            self.register(KeyRole::Command);
         }
-        self.register(false);
-        if !duplicate {
-            self.register(true);
+        if channel_clash.is_none() {
+            self.register(KeyRole::Channel);
         }
     }
 
-    fn register(&mut self, command: bool) {
+    fn same_binding(&self, left: KeyRole, right: KeyRole) -> bool {
+        match (
+            self.slot(left).binding.as_ref(),
+            self.slot(right).binding.as_ref(),
+        ) {
+            (Some(left), Some(right)) => left == right,
+            _ => false,
+        }
+    }
+
+    fn note_duplicate(&mut self, role: KeyRole, duplicate: bool, message: &str) {
+        let slot = self.slot_mut(role);
+        if duplicate {
+            slot.error = Some(message.to_string());
+        } else if slot
+            .error
+            .as_deref()
+            .is_some_and(|err| err.starts_with("Use a different key"))
+        {
+            slot.error = None;
+        }
+    }
+
+    fn register(&mut self, role: KeyRole) {
         let Some(manager) = self.manager.as_ref() else {
             return;
         };
-        let binding = if command {
-            self.command.binding.clone()
-        } else {
-            self.talk.binding.clone()
-        };
-        let Some(chord) = binding else {
+        let Some(chord) = self.slot(role).binding.clone() else {
             return;
         };
         match keys::chord_to_hotkey(&chord) {
@@ -181,35 +220,37 @@ impl HotkeyHub {
                 let id = hotkey.id();
                 match manager.register(hotkey) {
                     Ok(()) => {
-                        let slot = if command {
-                            &mut self.command
-                        } else {
-                            &mut self.talk
-                        };
+                        let slot = self.slot_mut(role);
                         slot.hotkey = Some(hotkey);
                         slot.id = Some(id);
                         slot.error = None;
                     }
                     Err(err) => {
-                        let slot = if command {
-                            &mut self.command
-                        } else {
-                            &mut self.talk
-                        };
-                        slot.error = Some(format!(
+                        self.slot_mut(role).error = Some(format!(
                             "Couldn't claim that key ({err}). Pick another, or use the on-screen button."
                         ));
                     }
                 }
             }
             Err(err) => {
-                let slot = if command {
-                    &mut self.command
-                } else {
-                    &mut self.talk
-                };
-                slot.error = Some(err);
+                self.slot_mut(role).error = Some(err);
             }
+        }
+    }
+
+    fn slot(&self, role: KeyRole) -> &Slot {
+        match role {
+            KeyRole::Talk => &self.talk,
+            KeyRole::Command => &self.command,
+            KeyRole::Channel => &self.channel,
+        }
+    }
+
+    fn slot_mut(&mut self, role: KeyRole) -> &mut Slot {
+        match role {
+            KeyRole::Talk => &mut self.talk,
+            KeyRole::Command => &mut self.command,
+            KeyRole::Channel => &mut self.channel,
         }
     }
 

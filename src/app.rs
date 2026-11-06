@@ -13,7 +13,7 @@ use crate::audio::AudioEngine;
 use crate::bus::WorkerEvent;
 use crate::config::{self, Command, Config, Gesture, JoyBind, Mode, SttEngine};
 use crate::cues::{CueKind, CuePlayer};
-use crate::hotkey::HotkeyHub;
+use crate::hotkey::{HotkeyHub, KeyRole};
 use crate::inject::InjectRequest;
 use crate::keys;
 use crate::phase::{self, Effect, Phase};
@@ -57,6 +57,7 @@ pub(crate) struct DownloadView {
 pub(crate) enum StickCapture {
     Talk,
     Command,
+    Channel,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -107,6 +108,8 @@ pub struct CallsignApp {
     screen_down: bool,
     applied_ptt: String,
     applied_command_ptt: String,
+    applied_channel_ptt: String,
+    channel_stick_down: bool,
     applied_audio: Option<String>,
     edit_snapshot: String,
     dirty: bool,
@@ -141,8 +144,10 @@ impl CallsignApp {
         let mut hotkeys = HotkeyHub::new();
         hotkeys.set_talk(keys::parse_ptt(&config.ptt));
         hotkeys.set_command(command_binding(&config.command_ptt));
+        hotkeys.set_channel(command_binding(&config.channel_ptt));
         let applied_ptt = config.ptt.clone();
         let applied_command_ptt = config.command_ptt.clone();
+        let applied_channel_ptt = config.channel_ptt.clone();
         let applied_audio = config.audio_device.clone();
         let mic_names = crate::audio::list_inputs();
         let edit_snapshot = serde_json::to_string(&config).unwrap_or_default();
@@ -182,6 +187,8 @@ impl CallsignApp {
             screen_down: false,
             applied_ptt,
             applied_command_ptt,
+            applied_channel_ptt,
+            channel_stick_down: false,
             applied_audio,
             edit_snapshot,
             dirty: false,
@@ -488,6 +495,11 @@ impl CallsignApp {
             self.hotkeys
                 .set_command(command_binding(&self.config.command_ptt));
         }
+        if self.applied_channel_ptt != self.config.channel_ptt {
+            self.applied_channel_ptt = self.config.channel_ptt.clone();
+            self.hotkeys
+                .set_channel(command_binding(&self.config.channel_ptt));
+        }
         if self.applied_audio != self.config.audio_device {
             self.applied_audio = self.config.audio_device.clone();
             self.audio.open(self.config.audio_device.as_deref());
@@ -495,13 +507,20 @@ impl CallsignApp {
         self.poll_sticks();
         let edges = self.hotkeys.poll();
         for edge in edges {
-            let press = if edge.command {
+            if edge.role == KeyRole::Channel {
+                if edge.down {
+                    self.toggle_channel();
+                }
+                continue;
+            }
+            let command = edge.role == KeyRole::Command;
+            let press = if command {
                 Press::CommandKey
             } else {
                 Press::TalkKey
             };
             if edge.down {
-                self.edge_down(press, edge.command);
+                self.edge_down(press, command);
             } else {
                 self.edge_up(press);
             }
@@ -531,6 +550,13 @@ impl CallsignApp {
                             edge.button + 1
                         )
                     }
+                    StickCapture::Channel => {
+                        format!(
+                            "Chat channel button is {} button {}.",
+                            edge.name,
+                            edge.button + 1
+                        )
+                    }
                 };
                 let bind = JoyBind {
                     guid: edge.guid,
@@ -540,6 +566,7 @@ impl CallsignApp {
                 match target {
                     StickCapture::Talk => self.config.joystick = Some(bind),
                     StickCapture::Command => self.config.command_joystick = Some(bind),
+                    StickCapture::Channel => self.config.channel_joystick = Some(bind),
                 }
                 self.listen_stick = None;
                 self.push_log(LogKind::System, message);
@@ -548,6 +575,48 @@ impl CallsignApp {
         }
         self.follow_stick(false);
         self.follow_stick(true);
+        self.follow_channel();
+    }
+
+    fn follow_channel(&mut self) {
+        let blocked = same_bind(&self.config.joystick, &self.config.channel_joystick)
+            || same_bind(&self.config.command_joystick, &self.config.channel_joystick);
+        if blocked {
+            self.channel_stick_down = false;
+            return;
+        }
+        let bind = self.config.channel_joystick.clone();
+        let down = bind
+            .as_ref()
+            .is_some_and(|bind| self.sticks.is_held(&bind.guid, &bind.name, bind.button));
+        if down && !self.channel_stick_down {
+            self.toggle_channel();
+        }
+        self.channel_stick_down = down;
+    }
+
+    fn toggle_channel(&mut self) {
+        let Some(next) = self.config.chat.next_profile() else {
+            self.push_log(
+                LogKind::Problem,
+                "Add a second chat channel before that button can switch.".into(),
+            );
+            return;
+        };
+        self.config.chat.profile = next;
+        let name = self
+            .config
+            .chat
+            .active()
+            .map(|profile| profile.name.clone())
+            .unwrap_or_else(|| "Chat".into());
+        let friendly = name.to_lowercase().contains("friend");
+        self.cue(if friendly {
+            CueKind::Friendly
+        } else {
+            CueKind::AllPilots
+        });
+        self.push_log(LogKind::System, format!("Chat channel is {name}."));
     }
 
     fn follow_stick(&mut self, command: bool) {
@@ -912,10 +981,13 @@ impl CallsignApp {
 }
 
 fn same_command_stick(config: &Config) -> bool {
-    match (&config.joystick, &config.command_joystick) {
-        (Some(talk), Some(command)) => {
-            talk.button == command.button
-                && (talk.guid == command.guid || talk.name == command.name)
+    same_bind(&config.joystick, &config.command_joystick)
+}
+
+fn same_bind(left: &Option<JoyBind>, right: &Option<JoyBind>) -> bool {
+    match (left, right) {
+        (Some(left), Some(right)) => {
+            left.button == right.button && (left.guid == right.guid || left.name == right.name)
         }
         _ => false,
     }

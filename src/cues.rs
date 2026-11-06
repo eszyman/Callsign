@@ -14,6 +14,8 @@ pub enum CueKind {
     CommandSent,
     Cancel,
     Problem,
+    AllPilots,
+    Friendly,
 }
 
 struct Shared {
@@ -162,6 +164,18 @@ fn render_cue(kind: CueKind, amp: f32, rate: u32) -> Vec<f32> {
             let mut samples = tone(196.0, 80, amp, rate);
             samples.extend(silence(40, rate));
             samples.extend(tone(174.0, 120, amp, rate));
+            samples
+        }
+        CueKind::AllPilots => {
+            let mut samples = tone(784.0, 40, amp * 0.7, rate);
+            samples.extend(silence(16, rate));
+            samples.extend(tone(1174.0, 55, amp * 0.7, rate));
+            samples
+        }
+        CueKind::Friendly => {
+            let mut samples = tone(1174.0, 40, amp * 0.7, rate);
+            samples.extend(silence(16, rate));
+            samples.extend(tone(784.0, 55, amp * 0.7, rate));
             samples
         }
     }

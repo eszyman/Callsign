@@ -8,7 +8,7 @@ Key output starts **off**. Until you turn it on in Setup, Callsign only shows wh
 
 ## The gesture
 
-Scroll Lock is the default talk key, because IL-2 rarely wants it. A joystick or HOTAS button can be bound as well, and the on-screen Talk button does the same thing. A second key, and a second stick button, can be set to always run Commands even when the header is on Chat.
+Scroll Lock is the default talk key, because IL-2 rarely wants it. A joystick or HOTAS button can be bound as well, and the on-screen Talk button does the same thing. A second key, and a second stick button, can be set to always run Commands even when the header is on Chat. A third key, and a third stick button, flips the chat line between All pilots and Friendly. One press switches it. It does not start listening. A rising tone is All pilots. A falling tone is Friendly.
 
 Chat and Commands each have a gesture. Chat and Mixed start on **Press twice**. Commands starts on **Hold to talk**, so a short order can go out on the release.
 

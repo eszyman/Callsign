@@ -159,6 +159,16 @@ impl ChatSettings {
             .get(self.profile)
             .or_else(|| self.profiles.first())
     }
+
+    /// The next channel after a press of the chat-channel button.
+    /// Two channels swap. More than two step forward and wrap.
+    pub fn next_profile(&self) -> Option<usize> {
+        let count = self.profiles.len();
+        if count < 2 {
+            return None;
+        }
+        Some((self.profile + 1) % count)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,6 +200,10 @@ pub struct Config {
     #[serde(default)]
     pub command_ptt: String,
     pub command_joystick: Option<JoyBind>,
+    /// Key that flips the chat line between All pilots and Friendly.
+    #[serde(default)]
+    pub channel_ptt: String,
+    pub channel_joystick: Option<JoyBind>,
     /// How long the second press must be held before the line is dropped.
     #[serde(default = "default_long_press")]
     pub long_press_ms: u64,
@@ -282,6 +296,8 @@ impl Default for Config {
             joystick: None,
             command_ptt: String::new(),
             command_joystick: None,
+            channel_ptt: String::new(),
+            channel_joystick: None,
             long_press_ms: default_long_press(),
             chat_gesture: default_chat_gesture(),
             command_gesture: default_command_gesture(),
@@ -744,5 +760,17 @@ mod tests {
             imported.commands[2].phrases,
             vec!["select nearest airbase", "select nearest"]
         );
+    }
+
+    #[test]
+    fn channel_button_swaps_all_pilots_and_friendly() {
+        let mut chat = ChatSettings::il2();
+        assert_eq!(chat.active().unwrap().name, "All pilots");
+        chat.profile = chat.next_profile().unwrap();
+        assert_eq!(chat.active().unwrap().name, "Friendly");
+        chat.profile = chat.next_profile().unwrap();
+        assert_eq!(chat.active().unwrap().name, "All pilots");
+        chat.profiles.truncate(1);
+        assert!(chat.next_profile().is_none());
     }
 }

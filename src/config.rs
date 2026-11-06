@@ -763,6 +763,22 @@ mod tests {
     }
 
     #[test]
+    fn korea_command_file_imports_and_its_keys_parse() {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("commands/Korea-commands.json");
+        let imported = import_commands(&path).expect("Korea command file");
+        assert!(!imported.repaired);
+        assert_eq!(imported.commands.len(), 321);
+        for command in &imported.commands {
+            if command.sequence.trim().is_empty() {
+                continue;
+            }
+            crate::keys::parse_sequence(&command.sequence)
+                .unwrap_or_else(|err| panic!("{} ({}) {err}", command.name, command.sequence));
+        }
+    }
+
+    #[test]
     fn channel_button_swaps_all_pilots_and_friendly() {
         let mut chat = ChatSettings::il2();
         assert_eq!(chat.active().unwrap().name, "All pilots");

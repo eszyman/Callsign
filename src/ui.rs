@@ -465,7 +465,7 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
         section(ui, "Voice to keys");
         ui.label(
             RichText::new(
-                "A phrase matches when its words show up in order. Short words have to be exact. These keys are the printed IL-2 Great Battles defaults — open Controls in the sim and check them before you turn key output on. Weapons start off: a misheard word should not drop ordnance. Eject and the gun trigger are not in this list.",
+                "A phrase matches when its words show up in order. Short words have to be exact. Add starter set uses the printed IL-2 Great Battles defaults. Weapons in that set start off, and eject and the gun trigger are not in it. Korea-commands.json, shipped beside the release, is the Korea keyboard. Browse to that file on this page and Import it. Open Controls in the sim and check the keys before you turn key output on.",
             )
             .color(theme::MUTED),
         );

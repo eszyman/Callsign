@@ -37,7 +37,7 @@ The header switches three modes:
 - **Commands** matches the words, in order, to a phrase on the Commands page and presses that key sequence. "Gear up" presses G. "Request landing" can press Tab, then 0, then 8, with a short wait between them. A phrase with no keys is reported and nothing is typed. Short words such as "up" and "down" have to be exact. Longer words allow a small mishear.
 - **Mixed** treats a line as a command only when it is almost nothing but the command. A sentence goes to chat. An unbound command is reported rather than typed into chat.
 
-Weapons start disabled, and eject and the gun trigger are not in the list. A misheard word should not drop ordnance. The printed Great Battles defaults are a starting point. Korea uses that map unless you have changed it. Open Controls in the sim and check the keys before you enable key output.
+Weapons in the starter set start disabled, and eject and the gun trigger are not in that list. A misheard word should not drop ordnance. The printed Great Battles defaults are a starting point. The Korea keyboard is a separate file, described below. Open Controls in the sim and check the keys before you enable key output.
 
 ## Run it
 
@@ -99,9 +99,19 @@ The file must be 16-bit PCM WAV.
 
 Callsign writes its own config the first time you change something. On Linux that is under the user config directory (`callsign/config.json`, readable only by you). Commands can be exported and imported from the Commands page. That page groups them by category and has a search box for the name, a phrase, or the keys. A log of what was heard and sent is written next to the config.
 
+## Korea commands
+
+`commands/Korea-commands.json` is the IL-2 Sturmovik: Korea keyboard, ready to import. A release should ship that file next to the executable, under the same name.
+
+On the Commands page, choose Browse, pick `Korea-commands.json`, and Import. Import matches a command by name and replaces its phrases and keys. A name that is not already in the list is added. Add starter set is still the shorter Great Battles list. It does not load this file.
+
+The file is the Korea map as flown, including stores, flares, gunner orders, and bailout. Those rows are enabled in the file. Key output in Setup still starts off, so nothing is typed until you turn that on. A few rows have an empty key sequence and stay disabled. Those are axes, or the second half of a control that has no single key. Wheel brakes are in the file. Callsign taps the key. It does not hold it down.
+
+Open Controls in the sim and check a binding before you rely on the phrase. A squadron that has rebound the keyboard will not match this file.
+
 ## Assumptions
 
 - Callsign sends keystrokes into a window whose title contains "IL-2". It checks the focused window before it types, and it will not type if that check fails.
 - Left and right modifiers are written out (`lctrl`, `rctrl`, `lalt`, `ralt`). A bare `ctrl` is the left key, which is the wrong key for friendly chat.
-- Wheel brakes are omitted. They are a hold, not a tap. Parking brake is Left Shift+Slash.
-- Numbered radio slots start empty. Put your own key sequence in before you enable them.
+- Wheel brakes are omitted from the starter set. They are a hold, not a tap. Parking brake in that set is Left Shift+Slash. The Korea file uses Left Shift+W and includes the brake keys as a tap.
+- Numbered radio slots in the starter set start empty. Put your own key sequence in before you enable them. The Korea file binds the digits.

@@ -17,7 +17,6 @@ egui = "0.37"
 global-hotkey = "0.9"
 enigo = "0.6"
 cpal = "0.15"
-sdl2 = { version = "0.38", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 directories = "6"
@@ -27,12 +26,17 @@ x11rb = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "multipart", "json", "rustls-tls"] }
 whisper-rs = { version = "0.16", optional = true }
 
+# Windows links SDL into the exe. Other platforms keep the shared build.
 [target.'cfg(windows)'.dependencies]
+sdl2 = { version = "0.38", features = ["bundled", "static-link"] }
 windows = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Threading",
 ] }
+
+[target.'cfg(not(windows))'.dependencies]
+sdl2 = { version = "0.38", features = ["bundled"] }
 
 [profile.release]
 lto = "thin"

@@ -767,7 +767,7 @@ fn command_matches(command: &Command, query: &str) -> bool {
 fn command_intro(game: Game) -> String {
     let starter = match game {
         Game::Gb => "A new list starts from the printed Great Battles defaults.",
-        Game::Korea => "A new list starts from the Korea starter. The command menu there is Tab.",
+        Game::Korea => "A new list starts from the Korea starter. The command menu there is Tab. Korea-commands.json, shipped beside the release, is the full Korea keyboard. Browse to that file on this page and Import it.",
     };
     format!(
         "A phrase matches when its words show up in order. Short words have to be exact. This list is saved for {} only. {} keeps its own commands. {starter} Open Controls in the sim and check the keys before you turn key output on. Weapons start off: a misheard word should not drop ordnance. Eject and the gun trigger are not in this list.",

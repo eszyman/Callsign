@@ -1,10 +1,12 @@
 //! Starter bindings for each sim.
 //!
-//! Great Battles uses the printed defaults. Korea uses the same phrases, with
-//! the keys that differ on a stock Korea install. Weapon releases and the
-//! numbered radio slots start disabled: a near miss should not drop ordnance,
-//! and an unbound radio slot should not swallow chat. The two lists are
-//! stored apart, so editing one sim does not change the other.
+//! Great Battles uses the printed defaults. Korea's short starter uses the
+//! same phrases, with Tab for the command menu. The full Korea keyboard is
+//! `commands/Korea-commands.json`, imported from the Commands page. Weapon
+//! releases and the numbered radio slots in the starter lists start disabled:
+//! a near miss should not drop ordnance, and an unbound radio slot should not
+//! swallow chat. The two lists are stored apart, so editing one sim does not
+//! change the other.
 
 use crate::config::{Command, Game};
 

@@ -194,7 +194,16 @@ fn fail(headline: &str, detail: &str) -> Dispatch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ChatSettings, Command, Config};
+    use crate::config::{ChatSettings, Command, Config, Game};
+    use crate::presets::starter_commands;
+
+    fn short_korea() -> Config {
+        let mut config = Config::default();
+        let commands = starter_commands(Game::Korea);
+        config.korea.next_id = commands.iter().map(|command| command.id).max().unwrap_or(0) + 1;
+        config.korea.commands = commands;
+        config
+    }
 
     fn input<'a>(mode: Mode, text: &'a str, config: &'a Config, practice: bool) -> PlanInput<'a> {
         PlanInput {
@@ -226,7 +235,7 @@ mod tests {
 
     #[test]
     fn command_presses_gear_and_refuses_weapons() {
-        let config = Config::default();
+        let config = short_korea();
         let gear = plan_action(&input(Mode::Command, "gear up", &config, false));
         assert!(gear.ok);
         assert_eq!(gear.headline, "Landing gear");
@@ -237,7 +246,7 @@ mod tests {
 
     #[test]
     fn mixed_mode_keeps_sentences_as_chat() {
-        let config = Config::default();
+        let config = short_korea();
         let sentence = plan_action(&input(
             Mode::Mixed,
             "please put the gear up now",

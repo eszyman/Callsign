@@ -111,13 +111,15 @@ Callsign writes its own config the first time you change something. On Linux tha
 
 ## Korea commands
 
-`commands/Korea-commands.json` is the IL-2 Sturmovik: Korea keyboard, ready to import. A release should ship that file next to the executable, under the same name.
-
-On the Commands page, with IL-2 Series: Korea selected in Setup, choose Browse, pick `Korea-commands.json`, and Import. Import matches a command by name and replaces its phrases and keys. A name that is not already in the list is added. Add starter set loads the short list for the selected game. It does not load this file.
+`commands/callsign-commands-korea.json` is compiled into the program. A new Korea profile starts from that file. An older settings file gains those commands once: a matching name is updated, and a name you added yourself stays. On the Commands page, Load built-in Korea list applies the file again. Export still writes `callsign-commands-korea.json` beside the config.
 
 The file is the Korea map as flown, including stores, flares, gunner orders, and bailout. Those rows are enabled in the file. Key output in Setup still starts off, so nothing is typed until you turn that on. A few rows have an empty key sequence and stay disabled. Those are axes, or the second half of a control that has no single key. Wheel brakes are in the file. Callsign taps the key. It does not hold it down.
 
 Open Controls in the sim and check a binding before you rely on the phrase. A squadron that has rebound the keyboard will not match this file.
+
+## Updates
+
+Setup compares this copy with the latest release at <https://github.com/eszyman/Callsign/releases/latest>. It does not download a new program. This source is version 0.3.0. The published Windows build stays the v0.2.0 release until a new `callsign.exe` is published there.
 
 ## Assumptions
 

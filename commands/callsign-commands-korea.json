@@ -1,7 +1,7 @@
 {
   "commands": [
     {
-      "id": 414,
+      "id": 736,
       "name": "ESC menu",
       "group": "User Interface",
       "phrases": [
@@ -11,7 +11,7 @@
       "enabled": true
     },
     {
-      "id": 415,
+      "id": 737,
       "name": "Multimenu",
       "group": "User Interface",
       "phrases": [
@@ -21,7 +21,7 @@
       "enabled": true
     },
     {
-      "id": 416,
+      "id": 738,
       "name": "Commander's menu",
       "group": "Radio",
       "phrases": [
@@ -34,7 +34,7 @@
       "enabled": true
     },
     {
-      "id": 417,
+      "id": 739,
       "name": "Systems menu",
       "group": "User Interface",
       "phrases": [
@@ -45,7 +45,7 @@
       "enabled": true
     },
     {
-      "id": 418,
+      "id": 740,
       "name": "Mission briefing map",
       "group": "User Interface",
       "phrases": [
@@ -55,18 +55,19 @@
       "enabled": true
     },
     {
-      "id": 419,
+      "id": 741,
       "name": "Mission status / Players table",
       "group": "User Interface",
       "phrases": [
         "mission status",
-        "players"
+        "players",
+        "statistics"
       ],
       "sequence": "q",
       "enabled": true
     },
     {
-      "id": 420,
+      "id": 742,
       "name": "Game chat",
       "group": "User Interface",
       "phrases": [
@@ -76,7 +77,7 @@
       "enabled": true
     },
     {
-      "id": 421,
+      "id": 743,
       "name": "Cursor: right/left (ministick)",
       "group": "User Interface",
       "phrases": [
@@ -86,7 +87,7 @@
       "enabled": false
     },
     {
-      "id": 422,
+      "id": 744,
       "name": "Cursor: down/up (ministick)",
       "group": "User Interface",
       "phrases": [
@@ -96,7 +97,7 @@
       "enabled": false
     },
     {
-      "id": 423,
+      "id": 745,
       "name": "Cursor: right",
       "group": "User Interface",
       "phrases": [
@@ -106,7 +107,7 @@
       "enabled": true
     },
     {
-      "id": 424,
+      "id": 746,
       "name": "Cursor: left",
       "group": "User Interface",
       "phrases": [
@@ -116,7 +117,7 @@
       "enabled": true
     },
     {
-      "id": 425,
+      "id": 747,
       "name": "Cursor: down",
       "group": "User Interface",
       "phrases": [
@@ -126,7 +127,7 @@
       "enabled": true
     },
     {
-      "id": 426,
+      "id": 748,
       "name": "Cursor: up",
       "group": "User Interface",
       "phrases": [
@@ -136,7 +137,7 @@
       "enabled": true
     },
     {
-      "id": 427,
+      "id": 749,
       "name": "Accept/Enter",
       "group": "User Interface",
       "phrases": [
@@ -146,7 +147,7 @@
       "enabled": true
     },
     {
-      "id": 428,
+      "id": 750,
       "name": "Cancel/Exit",
       "group": "User Interface",
       "phrases": [
@@ -156,7 +157,7 @@
       "enabled": true
     },
     {
-      "id": 429,
+      "id": 751,
       "name": "Action 1",
       "group": "User Interface",
       "phrases": [
@@ -166,7 +167,7 @@
       "enabled": true
     },
     {
-      "id": 430,
+      "id": 752,
       "name": "Action 2",
       "group": "User Interface",
       "phrases": [
@@ -176,7 +177,7 @@
       "enabled": true
     },
     {
-      "id": 431,
+      "id": 753,
       "name": "UI Focus next",
       "group": "User Interface",
       "phrases": [
@@ -186,7 +187,7 @@
       "enabled": true
     },
     {
-      "id": 432,
+      "id": 754,
       "name": "UI Focus prev",
       "group": "User Interface",
       "phrases": [
@@ -196,7 +197,7 @@
       "enabled": true
     },
     {
-      "id": 433,
+      "id": 755,
       "name": "HUD: common hide",
       "group": "User Interface",
       "phrases": [
@@ -207,7 +208,7 @@
       "enabled": true
     },
     {
-      "id": 434,
+      "id": 756,
       "name": "HUD: Markers and Aiming help hide",
       "group": "User Interface",
       "phrases": [
@@ -218,7 +219,7 @@
       "enabled": true
     },
     {
-      "id": 435,
+      "id": 757,
       "name": "HUD: Instruments set switch",
       "group": "User Interface",
       "phrases": [
@@ -228,7 +229,7 @@
       "enabled": true
     },
     {
-      "id": 436,
+      "id": 758,
       "name": "HUD: Mini-Map mode - next",
       "group": "User Interface",
       "phrases": [
@@ -238,7 +239,7 @@
       "enabled": true
     },
     {
-      "id": 437,
+      "id": 759,
       "name": "HUD: Mini-Map mode - prev",
       "group": "User Interface",
       "phrases": [
@@ -248,7 +249,7 @@
       "enabled": true
     },
     {
-      "id": 438,
+      "id": 760,
       "name": "Helper: AI Autopilot",
       "group": "Flight Controls",
       "phrases": [
@@ -258,7 +259,7 @@
       "enabled": true
     },
     {
-      "id": 439,
+      "id": 761,
       "name": "Helper: Autohorizon (Hold level flight)",
       "group": "Flight Controls",
       "phrases": [
@@ -268,7 +269,7 @@
       "enabled": true
     },
     {
-      "id": 440,
+      "id": 762,
       "name": "Helper: Autoclimb (Hold constant climb / descent)",
       "group": "Flight Controls",
       "phrases": [
@@ -278,7 +279,7 @@
       "enabled": true
     },
     {
-      "id": 441,
+      "id": 763,
       "name": "Autohorizon/Autoclimb: Right turn",
       "group": "Flight Controls",
       "phrases": [
@@ -288,7 +289,7 @@
       "enabled": true
     },
     {
-      "id": 442,
+      "id": 764,
       "name": "Autohorizon/Autoclimb: Left turn",
       "group": "Flight Controls",
       "phrases": [
@@ -298,7 +299,7 @@
       "enabled": true
     },
     {
-      "id": 443,
+      "id": 765,
       "name": "Autohorizon/Autoclimb: Slight right turn",
       "group": "Flight Controls",
       "phrases": [
@@ -308,7 +309,7 @@
       "enabled": true
     },
     {
-      "id": 444,
+      "id": 766,
       "name": "Autohorizon/Autoclimb: Slight left turn",
       "group": "Flight Controls",
       "phrases": [
@@ -318,7 +319,7 @@
       "enabled": true
     },
     {
-      "id": 445,
+      "id": 767,
       "name": "Pitch (Elevator)",
       "group": "Flight Controls",
       "phrases": [
@@ -328,7 +329,7 @@
       "enabled": true
     },
     {
-      "id": 446,
+      "id": 768,
       "name": "Roll (Ailerons)",
       "group": "Flight Controls",
       "phrases": [
@@ -338,7 +339,7 @@
       "enabled": true
     },
     {
-      "id": 447,
+      "id": 769,
       "name": "Yaw (Rudder)",
       "group": "Flight Controls",
       "phrases": [
@@ -348,7 +349,7 @@
       "enabled": true
     },
     {
-      "id": 448,
+      "id": 770,
       "name": "Yaw: reset to center",
       "group": "Flight Controls",
       "phrases": [
@@ -358,7 +359,7 @@
       "enabled": false
     },
     {
-      "id": 449,
+      "id": 771,
       "name": "Yaw: right",
       "group": "Flight Controls",
       "phrases": [
@@ -368,7 +369,7 @@
       "enabled": false
     },
     {
-      "id": 450,
+      "id": 772,
       "name": "Yaw: left",
       "group": "Flight Controls",
       "phrases": [
@@ -378,7 +379,7 @@
       "enabled": false
     },
     {
-      "id": 451,
+      "id": 773,
       "name": "Trimmers: Reset",
       "group": "Flight Controls",
       "phrases": [
@@ -388,7 +389,7 @@
       "enabled": true
     },
     {
-      "id": 452,
+      "id": 774,
       "name": "Elevator manual trim: pitch up/down",
       "group": "Flight Controls",
       "phrases": [
@@ -398,7 +399,7 @@
       "enabled": true
     },
     {
-      "id": 453,
+      "id": 775,
       "name": "Aileron manual trim: right/left",
       "group": "Flight Controls",
       "phrases": [
@@ -408,7 +409,7 @@
       "enabled": true
     },
     {
-      "id": 454,
+      "id": 776,
       "name": "Rudder manual trim: right/left",
       "group": "Flight Controls",
       "phrases": [
@@ -418,7 +419,7 @@
       "enabled": true
     },
     {
-      "id": 455,
+      "id": 777,
       "name": "Stabilizer servo: pitch up",
       "group": "Flight Controls",
       "phrases": [
@@ -428,7 +429,7 @@
       "enabled": true
     },
     {
-      "id": 456,
+      "id": 778,
       "name": "Stabilizer servo: pitch down",
       "group": "Flight Controls",
       "phrases": [
@@ -438,7 +439,7 @@
       "enabled": true
     },
     {
-      "id": 457,
+      "id": 779,
       "name": "Elevator servo-trim: pitch up",
       "group": "Flight Controls",
       "phrases": [
@@ -448,7 +449,7 @@
       "enabled": true
     },
     {
-      "id": 458,
+      "id": 780,
       "name": "Elevator servo-trim: pitch down",
       "group": "Flight Controls",
       "phrases": [
@@ -458,7 +459,7 @@
       "enabled": true
     },
     {
-      "id": 459,
+      "id": 781,
       "name": "Aileron servo-trim: right",
       "group": "Flight Controls",
       "phrases": [
@@ -468,7 +469,7 @@
       "enabled": true
     },
     {
-      "id": 460,
+      "id": 782,
       "name": "Aileron servo-trim: left",
       "group": "Flight Controls",
       "phrases": [
@@ -478,7 +479,7 @@
       "enabled": true
     },
     {
-      "id": 461,
+      "id": 783,
       "name": "Rudder servo-trim: right",
       "group": "Flight Controls",
       "phrases": [
@@ -488,7 +489,7 @@
       "enabled": true
     },
     {
-      "id": 462,
+      "id": 784,
       "name": "Rudder servo-trim: left",
       "group": "Flight Controls",
       "phrases": [
@@ -498,7 +499,7 @@
       "enabled": true
     },
     {
-      "id": 463,
+      "id": 785,
       "name": "Helper: Prop pitch Mixture and Supercharger",
       "group": "Engine",
       "phrases": [
@@ -508,7 +509,7 @@
       "enabled": true
     },
     {
-      "id": 464,
+      "id": 786,
       "name": "Helper: Cooling shutters",
       "group": "Engine",
       "phrases": [
@@ -518,7 +519,7 @@
       "enabled": true
     },
     {
-      "id": 465,
+      "id": 787,
       "name": "Helper: Engine Throttle (RPM) limiter",
       "group": "Engine",
       "phrases": [
@@ -528,7 +529,7 @@
       "enabled": true
     },
     {
-      "id": 466,
+      "id": 788,
       "name": "Helper: Fuel system management",
       "group": "Engine",
       "phrases": [
@@ -540,7 +541,7 @@
       "enabled": true
     },
     {
-      "id": 467,
+      "id": 789,
       "name": "Throttle control",
       "group": "Engine",
       "phrases": [
@@ -550,7 +551,7 @@
       "enabled": true
     },
     {
-      "id": 468,
+      "id": 790,
       "name": "Engine: start/stop sequence",
       "group": "Engine",
       "phrases": [
@@ -562,7 +563,7 @@
       "enabled": true
     },
     {
-      "id": 469,
+      "id": 791,
       "name": "Boost: on/off",
       "group": "Engine",
       "phrases": [
@@ -572,7 +573,7 @@
       "enabled": true
     },
     {
-      "id": 470,
+      "id": 792,
       "name": "Jet boosters: Fire",
       "group": "Engine",
       "phrases": [
@@ -587,7 +588,7 @@
       "enabled": true
     },
     {
-      "id": 471,
+      "id": 793,
       "name": "Jet boosters: Jettison",
       "group": "Engine",
       "phrases": [
@@ -596,13 +597,14 @@
         "jettison J A T O",
         "jettison Jato",
         "jettison Jet assisted take off",
-        "drop Jet assisted take off"
+        "drop Jet assisted take off",
+        "drop JATO"
       ],
       "sequence": "rshift+j",
       "enabled": true
     },
     {
-      "id": 472,
+      "id": 794,
       "name": "Propeller: RPM/Pitch",
       "group": "Engine",
       "phrases": [
@@ -612,7 +614,7 @@
       "enabled": true
     },
     {
-      "id": 473,
+      "id": 795,
       "name": "Superchargers stage",
       "group": "Engine",
       "phrases": [
@@ -623,7 +625,7 @@
       "enabled": true
     },
     {
-      "id": 474,
+      "id": 796,
       "name": "Mixture control",
       "group": "Engine",
       "phrases": [
@@ -633,7 +635,7 @@
       "enabled": true
     },
     {
-      "id": 475,
+      "id": 797,
       "name": "Water radiator",
       "group": "Engine",
       "phrases": [
@@ -643,7 +645,7 @@
       "enabled": true
     },
     {
-      "id": 476,
+      "id": 798,
       "name": "Oil radiator",
       "group": "Engine",
       "phrases": [
@@ -653,7 +655,7 @@
       "enabled": true
     },
     {
-      "id": 477,
+      "id": 799,
       "name": "Inlet cowl shutters",
       "group": "Engine",
       "phrases": [
@@ -663,7 +665,7 @@
       "enabled": true
     },
     {
-      "id": 478,
+      "id": 800,
       "name": "Cowl shutters servo mode: manual/auto",
       "group": "Engine",
       "phrases": [
@@ -673,7 +675,7 @@
       "enabled": true
     },
     {
-      "id": 479,
+      "id": 801,
       "name": "Outlet cowl shutters, servo: open",
       "group": "Engine",
       "phrases": [
@@ -683,7 +685,7 @@
       "enabled": true
     },
     {
-      "id": 480,
+      "id": 802,
       "name": "Outlet cowl shutters, servo: close",
       "group": "Engine",
       "phrases": [
@@ -693,7 +695,7 @@
       "enabled": true
     },
     {
-      "id": 481,
+      "id": 803,
       "name": "Water radiator servo mode: manual/auto",
       "group": "Engine",
       "phrases": [
@@ -704,7 +706,7 @@
       "enabled": true
     },
     {
-      "id": 482,
+      "id": 804,
       "name": "Water radiator, servo: open",
       "group": "Engine",
       "phrases": [
@@ -714,7 +716,7 @@
       "enabled": true
     },
     {
-      "id": 483,
+      "id": 805,
       "name": "Water radiator, servo: close",
       "group": "Engine",
       "phrases": [
@@ -724,7 +726,7 @@
       "enabled": true
     },
     {
-      "id": 484,
+      "id": 806,
       "name": "Oil radiator servo mode: manual/auto",
       "group": "Engine",
       "phrases": [
@@ -735,7 +737,7 @@
       "enabled": true
     },
     {
-      "id": 485,
+      "id": 807,
       "name": "Oil radiator, servo: open",
       "group": "Engine",
       "phrases": [
@@ -745,7 +747,7 @@
       "enabled": true
     },
     {
-      "id": 486,
+      "id": 808,
       "name": "Oil radiator, servo: close",
       "group": "Engine",
       "phrases": [
@@ -755,7 +757,7 @@
       "enabled": true
     },
     {
-      "id": 487,
+      "id": 809,
       "name": "Landing gear: extend/retract",
       "group": "Systems",
       "phrases": [
@@ -765,7 +767,7 @@
       "enabled": true
     },
     {
-      "id": 488,
+      "id": 810,
       "name": "Landing gear: extend",
       "group": "Systems",
       "phrases": [
@@ -775,7 +777,7 @@
       "enabled": true
     },
     {
-      "id": 489,
+      "id": 811,
       "name": "Landing gear: retract",
       "group": "Systems",
       "phrases": [
@@ -785,7 +787,7 @@
       "enabled": true
     },
     {
-      "id": 490,
+      "id": 812,
       "name": "Landing gear: Emergency release",
       "group": "Systems",
       "phrases": [
@@ -800,7 +802,7 @@
       "enabled": true
     },
     {
-      "id": 491,
+      "id": 813,
       "name": "Flaps: extend/retract",
       "group": "Systems",
       "phrases": [
@@ -810,7 +812,7 @@
       "enabled": false
     },
     {
-      "id": 492,
+      "id": 814,
       "name": "Flaps: extend",
       "group": "Systems",
       "phrases": [
@@ -820,7 +822,7 @@
       "enabled": true
     },
     {
-      "id": 493,
+      "id": 815,
       "name": "Flaps: retract",
       "group": "Systems",
       "phrases": [
@@ -830,37 +832,37 @@
       "enabled": true
     },
     {
-      "id": 494,
+      "id": 816,
       "name": "AirBrakes: extend/retract",
       "group": "Systems",
       "phrases": [
-        "airbrake"
+        "air brake"
       ],
       "sequence": "b",
       "enabled": true
     },
     {
-      "id": 495,
+      "id": 817,
       "name": "AirBrakes: extend",
       "group": "Systems",
       "phrases": [
-        "extend airbrake"
+        "extend air brake"
       ],
       "sequence": "lctrl+b",
       "enabled": true
     },
     {
-      "id": 496,
+      "id": 818,
       "name": "AirBrakes: retract",
       "group": "Systems",
       "phrases": [
-        "retract airbrake"
+        "retract air brake"
       ],
       "sequence": "lshift+b",
       "enabled": true
     },
     {
-      "id": 497,
+      "id": 819,
       "name": "Tail/Nose wheel steering: lock/unlock",
       "group": "Systems",
       "phrases": [
@@ -871,7 +873,7 @@
       "enabled": true
     },
     {
-      "id": 498,
+      "id": 820,
       "name": "Wheel brakes: common, differential",
       "group": "Systems",
       "phrases": [
@@ -881,7 +883,7 @@
       "enabled": true
     },
     {
-      "id": 499,
+      "id": 821,
       "name": "Wheel brake: right",
       "group": "Systems",
       "phrases": [
@@ -891,7 +893,7 @@
       "enabled": true
     },
     {
-      "id": 500,
+      "id": 822,
       "name": "Wheel brake: left",
       "group": "Systems",
       "phrases": [
@@ -901,7 +903,7 @@
       "enabled": true
     },
     {
-      "id": 501,
+      "id": 823,
       "name": "Parking brakes: on/off",
       "group": "Systems",
       "phrases": [
@@ -911,7 +913,7 @@
       "enabled": true
     },
     {
-      "id": 502,
+      "id": 824,
       "name": "Refueling: start/stop (inside the service area)",
       "group": "Systems",
       "phrases": [
@@ -921,7 +923,7 @@
       "enabled": true
     },
     {
-      "id": 503,
+      "id": 825,
       "name": "Jettison drop tanks",
       "group": "Systems",
       "phrases": [
@@ -931,7 +933,7 @@
       "enabled": true
     },
     {
-      "id": 504,
+      "id": 826,
       "name": "Fuel dumping",
       "group": "Systems",
       "phrases": [
@@ -941,7 +943,7 @@
       "enabled": true
     },
     {
-      "id": 505,
+      "id": 827,
       "name": "Cockpit canopy: open/close",
       "group": "Systems",
       "phrases": [
@@ -951,7 +953,7 @@
       "enabled": true
     },
     {
-      "id": 506,
+      "id": 828,
       "name": "Window: open/close",
       "group": "Systems",
       "phrases": [
@@ -961,7 +963,7 @@
       "enabled": true
     },
     {
-      "id": 507,
+      "id": 829,
       "name": "Cockpit light: mode",
       "group": "Systems",
       "phrases": [
@@ -971,7 +973,7 @@
       "enabled": true
     },
     {
-      "id": 508,
+      "id": 830,
       "name": "Landing lights",
       "group": "Systems",
       "phrases": [
@@ -981,7 +983,7 @@
       "enabled": true
     },
     {
-      "id": 509,
+      "id": 831,
       "name": "Taxi lights",
       "group": "Systems",
       "phrases": [
@@ -991,7 +993,7 @@
       "enabled": true
     },
     {
-      "id": 510,
+      "id": 832,
       "name": "Navigation lights",
       "group": "Systems",
       "phrases": [
@@ -1002,7 +1004,7 @@
       "enabled": true
     },
     {
-      "id": 511,
+      "id": 833,
       "name": "Formation lights",
       "group": "Systems",
       "phrases": [
@@ -1012,7 +1014,7 @@
       "enabled": true
     },
     {
-      "id": 512,
+      "id": 834,
       "name": "Code lights",
       "group": "Systems",
       "phrases": [
@@ -1022,7 +1024,7 @@
       "enabled": true
     },
     {
-      "id": 513,
+      "id": 835,
       "name": "Gauge: next",
       "group": "Systems",
       "phrases": [
@@ -1032,7 +1034,7 @@
       "enabled": true
     },
     {
-      "id": 514,
+      "id": 836,
       "name": "Gauge: prev",
       "group": "Systems",
       "phrases": [
@@ -1042,7 +1044,7 @@
       "enabled": true
     },
     {
-      "id": 515,
+      "id": 837,
       "name": "Gauge - control: next",
       "group": "Systems",
       "phrases": [
@@ -1052,7 +1054,7 @@
       "enabled": true
     },
     {
-      "id": 516,
+      "id": 838,
       "name": "Gauge - control: prev",
       "group": "Systems",
       "phrases": [
@@ -1062,7 +1064,7 @@
       "enabled": true
     },
     {
-      "id": 517,
+      "id": 839,
       "name": "Gauge - control: push / turn +",
       "group": "Systems",
       "phrases": [
@@ -1072,7 +1074,7 @@
       "enabled": true
     },
     {
-      "id": 518,
+      "id": 840,
       "name": "Gauge - control: turn -",
       "group": "Systems",
       "phrases": [
@@ -1082,7 +1084,7 @@
       "enabled": true
     },
     {
-      "id": 519,
+      "id": 841,
       "name": "Altimeter setting: QFE (Airfield) / QNE (Standard)",
       "group": "Systems",
       "phrases": [
@@ -1092,7 +1094,7 @@
       "enabled": true
     },
     {
-      "id": 520,
+      "id": 842,
       "name": "Radio volume: increase",
       "group": "Systems",
       "phrases": [
@@ -1103,7 +1105,7 @@
       "enabled": true
     },
     {
-      "id": 521,
+      "id": 843,
       "name": "Radio volume: decrease",
       "group": "Systems",
       "phrases": [
@@ -1114,20 +1116,24 @@
       "enabled": true
     },
     {
-      "id": 522,
+      "id": 844,
       "name": "Radio channel: nearest active beacon",
       "group": "Systems",
       "phrases": [
         "select nearest beacon",
         "select the nearest beacon",
-        "select nearest airbase",
-        "select nearest"
+        "nearest air base",
+        "select nearest",
+        "nearest beacon",
+        "closest beacon",
+        "closest air base",
+        "closest airfield"
       ],
       "sequence": "ralt+insert",
       "enabled": true
     },
     {
-      "id": 523,
+      "id": 845,
       "name": "Radio compass channel: next",
       "group": "Systems",
       "phrases": [
@@ -1139,7 +1145,7 @@
       "enabled": true
     },
     {
-      "id": 524,
+      "id": 846,
       "name": "Radio compass channel: prev",
       "group": "Systems",
       "phrases": [
@@ -1151,7 +1157,7 @@
       "enabled": true
     },
     {
-      "id": 525,
+      "id": 847,
       "name": "Rearming munitions: start/stop (inside the service area)",
       "group": "Weapons",
       "phrases": [
@@ -1161,7 +1167,7 @@
       "enabled": true
     },
     {
-      "id": 526,
+      "id": 848,
       "name": "Master Arm",
       "group": "Weapons",
       "phrases": [
@@ -1171,7 +1177,7 @@
       "enabled": true
     },
     {
-      "id": 527,
+      "id": 849,
       "name": "Fire all guns",
       "group": "Weapons",
       "phrases": [
@@ -1181,7 +1187,7 @@
       "enabled": false
     },
     {
-      "id": 528,
+      "id": 850,
       "name": "Fire guns group 1",
       "group": "Weapons",
       "phrases": [
@@ -1191,7 +1197,7 @@
       "enabled": false
     },
     {
-      "id": 529,
+      "id": 851,
       "name": "Fire guns group 2",
       "group": "Weapons",
       "phrases": [
@@ -1201,7 +1207,7 @@
       "enabled": false
     },
     {
-      "id": 530,
+      "id": 852,
       "name": "Fire guns group 3",
       "group": "Weapons",
       "phrases": [
@@ -1211,7 +1217,7 @@
       "enabled": false
     },
     {
-      "id": 531,
+      "id": 853,
       "name": "Reload all guns",
       "group": "Weapons",
       "phrases": [
@@ -1222,7 +1228,7 @@
       "enabled": true
     },
     {
-      "id": 532,
+      "id": 854,
       "name": "Bombs drop / Smokes",
       "group": "Weapons",
       "phrases": [
@@ -1233,7 +1239,7 @@
       "enabled": true
     },
     {
-      "id": 533,
+      "id": 855,
       "name": "Rockets launch",
       "group": "Weapons",
       "phrases": [
@@ -1243,7 +1249,7 @@
       "enabled": true
     },
     {
-      "id": 534,
+      "id": 856,
       "name": "Jettison stores",
       "group": "Weapons",
       "phrases": [
@@ -1256,7 +1262,7 @@
       "enabled": true
     },
     {
-      "id": 535,
+      "id": 857,
       "name": "Bombs selector",
       "group": "Weapons",
       "phrases": [
@@ -1266,7 +1272,7 @@
       "enabled": true
     },
     {
-      "id": 536,
+      "id": 858,
       "name": "Rockets selector",
       "group": "Weapons",
       "phrases": [
@@ -1279,7 +1285,7 @@
       "enabled": true
     },
     {
-      "id": 537,
+      "id": 859,
       "name": "Bombs salvo interval",
       "group": "Weapons",
       "phrases": [
@@ -1291,7 +1297,7 @@
       "enabled": true
     },
     {
-      "id": 538,
+      "id": 860,
       "name": "Bomb bay: open/close",
       "group": "Weapons",
       "phrases": [
@@ -1301,7 +1307,7 @@
       "enabled": true
     },
     {
-      "id": 539,
+      "id": 861,
       "name": "Bomb fuses: on/off",
       "group": "Weapons",
       "phrases": [
@@ -1311,7 +1317,7 @@
       "enabled": true
     },
     {
-      "id": 540,
+      "id": 862,
       "name": "Gunsight: Mode",
       "group": "Weapons",
       "phrases": [
@@ -1321,7 +1327,7 @@
       "enabled": true
     },
     {
-      "id": 541,
+      "id": 863,
       "name": "Gunsight: Position",
       "group": "Weapons",
       "phrases": [
@@ -1331,7 +1337,7 @@
       "enabled": true
     },
     {
-      "id": 542,
+      "id": 864,
       "name": "Gunsight: Filter",
       "group": "Weapons",
       "phrases": [
@@ -1342,7 +1348,7 @@
       "enabled": true
     },
     {
-      "id": 543,
+      "id": 865,
       "name": "Gunsight: Brightness",
       "group": "Weapons",
       "phrases": [
@@ -1353,7 +1359,7 @@
       "enabled": true
     },
     {
-      "id": 544,
+      "id": 866,
       "name": "Gunsight: Cage",
       "group": "Weapons",
       "phrases": [
@@ -1366,7 +1372,7 @@
       "enabled": true
     },
     {
-      "id": 545,
+      "id": 867,
       "name": "Gunsight adjust: Reset",
       "group": "Weapons",
       "phrases": [
@@ -1376,7 +1382,7 @@
       "enabled": true
     },
     {
-      "id": 546,
+      "id": 868,
       "name": "Gunsight adjust: Target range",
       "group": "Weapons",
       "phrases": [
@@ -1386,7 +1392,7 @@
       "enabled": true
     },
     {
-      "id": 547,
+      "id": 869,
       "name": "Gunsight adjust: Target size",
       "group": "Weapons",
       "phrases": [
@@ -1396,7 +1402,7 @@
       "enabled": true
     },
     {
-      "id": 548,
+      "id": 870,
       "name": "Gunsight adjust: Wind speed",
       "group": "Weapons",
       "phrases": [
@@ -1406,7 +1412,7 @@
       "enabled": true
     },
     {
-      "id": 549,
+      "id": 871,
       "name": "Gunsight adjust: Tilt",
       "group": "Weapons",
       "phrases": [
@@ -1416,7 +1422,7 @@
       "enabled": true
     },
     {
-      "id": 550,
+      "id": 872,
       "name": "Radar rangefinder: Range limit",
       "group": "Weapons",
       "phrases": [
@@ -1426,7 +1432,7 @@
       "enabled": true
     },
     {
-      "id": 551,
+      "id": 873,
       "name": "Radar rangefinder: Reset target",
       "group": "Weapons",
       "phrases": [
@@ -1436,7 +1442,7 @@
       "enabled": true
     },
     {
-      "id": 552,
+      "id": 874,
       "name": "RWR / TWS: Power",
       "group": "Weapons",
       "phrases": [
@@ -1446,7 +1452,7 @@
       "enabled": true
     },
     {
-      "id": 553,
+      "id": 875,
       "name": "Switch to turret",
       "group": "Weapons",
       "phrases": [
@@ -1456,7 +1462,7 @@
       "enabled": true
     },
     {
-      "id": 554,
+      "id": 876,
       "name": "Turret: Enable",
       "group": "Weapons",
       "phrases": [
@@ -1466,7 +1472,7 @@
       "enabled": false
     },
     {
-      "id": 555,
+      "id": 877,
       "name": "Turret: Gunsight view",
       "group": "Weapons",
       "phrases": [
@@ -1476,7 +1482,7 @@
       "enabled": false
     },
     {
-      "id": 556,
+      "id": 878,
       "name": "Turret: Fire",
       "group": "Weapons",
       "phrases": [
@@ -1486,7 +1492,7 @@
       "enabled": false
     },
     {
-      "id": 557,
+      "id": 879,
       "name": "Turret: Reload",
       "group": "Weapons",
       "phrases": [
@@ -1496,7 +1502,7 @@
       "enabled": false
     },
     {
-      "id": 558,
+      "id": 880,
       "name": "Gunners: Close fire range",
       "group": "Weapons",
       "phrases": [
@@ -1506,7 +1512,7 @@
       "enabled": true
     },
     {
-      "id": 559,
+      "id": 881,
       "name": "Gunners: Normal fire range",
       "group": "Weapons",
       "phrases": [
@@ -1516,7 +1522,7 @@
       "enabled": true
     },
     {
-      "id": 560,
+      "id": 882,
       "name": "Gunners: Far fire range",
       "group": "Weapons",
       "phrases": [
@@ -1526,7 +1532,7 @@
       "enabled": true
     },
     {
-      "id": 561,
+      "id": 883,
       "name": "Gunners: Fire at will",
       "group": "Weapons",
       "phrases": [
@@ -1536,7 +1542,7 @@
       "enabled": true
     },
     {
-      "id": 562,
+      "id": 884,
       "name": "Gunners: Return fire",
       "group": "Weapons",
       "phrases": [
@@ -1546,7 +1552,7 @@
       "enabled": true
     },
     {
-      "id": 563,
+      "id": 885,
       "name": "Gunners: Attack ground targets",
       "group": "Weapons",
       "phrases": [
@@ -1556,7 +1562,7 @@
       "enabled": true
     },
     {
-      "id": 564,
+      "id": 886,
       "name": "Gunners: Cease fire",
       "group": "Weapons",
       "phrases": [
@@ -1566,7 +1572,7 @@
       "enabled": true
     },
     {
-      "id": 565,
+      "id": 887,
       "name": "Gunners: Bail out",
       "group": "Weapons",
       "phrases": [
@@ -1576,7 +1582,7 @@
       "enabled": true
     },
     {
-      "id": 566,
+      "id": 888,
       "name": "Flare handgun: Red",
       "group": "Weapons",
       "phrases": [
@@ -1586,7 +1592,7 @@
       "enabled": true
     },
     {
-      "id": 567,
+      "id": 889,
       "name": "Flare handgun: Green",
       "group": "Weapons",
       "phrases": [
@@ -1596,7 +1602,7 @@
       "enabled": true
     },
     {
-      "id": 568,
+      "id": 890,
       "name": "Flare handgun: White",
       "group": "Weapons",
       "phrases": [
@@ -1606,7 +1612,7 @@
       "enabled": true
     },
     {
-      "id": 569,
+      "id": 891,
       "name": "Handgun",
       "group": "Weapons",
       "phrases": [
@@ -1617,7 +1623,7 @@
       "enabled": true
     },
     {
-      "id": 570,
+      "id": 892,
       "name": "Shoot handgun",
       "group": "Weapons",
       "phrases": [
@@ -1629,7 +1635,7 @@
       "enabled": true
     },
     {
-      "id": 571,
+      "id": 893,
       "name": "Hide handgun",
       "group": "Weapons",
       "phrases": [
@@ -1639,7 +1645,7 @@
       "enabled": true
     },
     {
-      "id": 572,
+      "id": 894,
       "name": "Drop defensive grenades (IL-10)",
       "group": "Weapons",
       "phrases": [
@@ -1649,7 +1655,7 @@
       "enabled": true
     },
     {
-      "id": 573,
+      "id": 895,
       "name": "Cockpit view mode: Pan / Centered / Fixed / Gradual",
       "group": "Cockpit View",
       "phrases": [
@@ -1659,7 +1665,7 @@
       "enabled": true
     },
     {
-      "id": 574,
+      "id": 896,
       "name": "Cockpit view: Save current view as snap",
       "group": "Cockpit View",
       "phrases": [
@@ -1669,7 +1675,7 @@
       "enabled": true
     },
     {
-      "id": 575,
+      "id": 897,
       "name": "Zoom cockpit view: in/out",
       "group": "Cockpit View",
       "phrases": [
@@ -1679,7 +1685,7 @@
       "enabled": false
     },
     {
-      "id": 576,
+      "id": 898,
       "name": "Zoom cockpit view: in",
       "group": "Cockpit View",
       "phrases": [
@@ -1689,7 +1695,7 @@
       "enabled": true
     },
     {
-      "id": 577,
+      "id": 899,
       "name": "Zoom cockpit view: out",
       "group": "Cockpit View",
       "phrases": [
@@ -1699,7 +1705,7 @@
       "enabled": true
     },
     {
-      "id": 578,
+      "id": 900,
       "name": "Zoom cockpit view: reset",
       "group": "Cockpit View",
       "phrases": [
@@ -1709,7 +1715,7 @@
       "enabled": true
     },
     {
-      "id": 579,
+      "id": 901,
       "name": "Zoom cockpit view: Snap to minimum",
       "group": "Cockpit View",
       "phrases": [
@@ -1719,7 +1725,7 @@
       "enabled": true
     },
     {
-      "id": 580,
+      "id": 902,
       "name": "Zoom cockpit view: Snap to level 1",
       "group": "Cockpit View",
       "phrases": [
@@ -1729,7 +1735,7 @@
       "enabled": true
     },
     {
-      "id": 581,
+      "id": 903,
       "name": "Zoom cockpit view: Snap to level 2",
       "group": "Cockpit View",
       "phrases": [
@@ -1739,7 +1745,7 @@
       "enabled": true
     },
     {
-      "id": 582,
+      "id": 904,
       "name": "Zoom cockpit view: Snap to level 3",
       "group": "Cockpit View",
       "phrases": [
@@ -1749,7 +1755,7 @@
       "enabled": true
     },
     {
-      "id": 583,
+      "id": 905,
       "name": "Zoom cockpit view: Snap to maximum",
       "group": "Cockpit View",
       "phrases": [
@@ -1759,7 +1765,7 @@
       "enabled": true
     },
     {
-      "id": 584,
+      "id": 906,
       "name": "Cockpit view: Turn up / Snap forward-up",
       "group": "Cockpit View",
       "phrases": [
@@ -1769,7 +1775,7 @@
       "enabled": true
     },
     {
-      "id": 585,
+      "id": 907,
       "name": "Cockpit view: Turn up-right / Snap forward-right",
       "group": "Cockpit View",
       "phrases": [
@@ -1779,7 +1785,7 @@
       "enabled": true
     },
     {
-      "id": 586,
+      "id": 908,
       "name": "Cockpit view: Turn right / Snap right",
       "group": "Cockpit View",
       "phrases": [
@@ -1789,7 +1795,7 @@
       "enabled": true
     },
     {
-      "id": 587,
+      "id": 909,
       "name": "Cockpit view: Turn down-right / Snap back-right",
       "group": "Cockpit View",
       "phrases": [
@@ -1799,7 +1805,7 @@
       "enabled": true
     },
     {
-      "id": 588,
+      "id": 910,
       "name": "Cockpit view: Turn down / Snap back-up",
       "group": "Cockpit View",
       "phrases": [
@@ -1809,7 +1815,7 @@
       "enabled": true
     },
     {
-      "id": 589,
+      "id": 911,
       "name": "Cockpit view: Turn down-left / Snap back-left",
       "group": "Cockpit View",
       "phrases": [
@@ -1819,7 +1825,7 @@
       "enabled": true
     },
     {
-      "id": 590,
+      "id": 912,
       "name": "Cockpit view: Turn left / Snap left",
       "group": "Cockpit View",
       "phrases": [
@@ -1829,7 +1835,7 @@
       "enabled": true
     },
     {
-      "id": 591,
+      "id": 913,
       "name": "Cockpit view: Turn up-left / Snap forward-left",
       "group": "Cockpit View",
       "phrases": [
@@ -1839,7 +1845,7 @@
       "enabled": true
     },
     {
-      "id": 592,
+      "id": 914,
       "name": "Snap view modifier: Upper",
       "group": "Cockpit View",
       "phrases": [
@@ -1849,7 +1855,7 @@
       "enabled": true
     },
     {
-      "id": 593,
+      "id": 915,
       "name": "Snap view modifier: Lower",
       "group": "Cockpit View",
       "phrases": [
@@ -1859,7 +1865,7 @@
       "enabled": true
     },
     {
-      "id": 594,
+      "id": 916,
       "name": "Snap view modifier: Specific",
       "group": "Cockpit View",
       "phrases": [
@@ -1869,7 +1875,7 @@
       "enabled": true
     },
     {
-      "id": 595,
+      "id": 917,
       "name": "Pitch cockpit view: down/up (ministick)",
       "group": "Cockpit View",
       "phrases": [
@@ -1879,7 +1885,7 @@
       "enabled": false
     },
     {
-      "id": 596,
+      "id": 918,
       "name": "Turn cockpit view: right/left (ministick)",
       "group": "Cockpit View",
       "phrases": [
@@ -1889,7 +1895,7 @@
       "enabled": false
     },
     {
-      "id": 597,
+      "id": 919,
       "name": "Roll cockpit view: right/left (ministick)",
       "group": "Cockpit View",
       "phrases": [
@@ -1899,7 +1905,7 @@
       "enabled": false
     },
     {
-      "id": 598,
+      "id": 920,
       "name": "Move cockpit view: right",
       "group": "Cockpit View",
       "phrases": [
@@ -1909,7 +1915,7 @@
       "enabled": true
     },
     {
-      "id": 599,
+      "id": 921,
       "name": "Move cockpit view: left",
       "group": "Cockpit View",
       "phrases": [
@@ -1919,7 +1925,7 @@
       "enabled": true
     },
     {
-      "id": 600,
+      "id": 922,
       "name": "Move cockpit view: forward",
       "group": "Cockpit View",
       "phrases": [
@@ -1929,7 +1935,7 @@
       "enabled": true
     },
     {
-      "id": 601,
+      "id": 923,
       "name": "Move cockpit view: backward",
       "group": "Cockpit View",
       "phrases": [
@@ -1939,7 +1945,7 @@
       "enabled": true
     },
     {
-      "id": 602,
+      "id": 924,
       "name": "Move cockpit view: up",
       "group": "Cockpit View",
       "phrases": [
@@ -1949,7 +1955,7 @@
       "enabled": true
     },
     {
-      "id": 603,
+      "id": 925,
       "name": "Move cockpit view: down",
       "group": "Cockpit View",
       "phrases": [
@@ -1959,7 +1965,7 @@
       "enabled": true
     },
     {
-      "id": 604,
+      "id": 926,
       "name": "Move cockpit view: right/left (ministick)",
       "group": "Cockpit View",
       "phrases": [
@@ -1969,7 +1975,7 @@
       "enabled": false
     },
     {
-      "id": 605,
+      "id": 927,
       "name": "Move cockpit view: forward/backward (ministick)",
       "group": "Cockpit View",
       "phrases": [
@@ -1979,7 +1985,7 @@
       "enabled": false
     },
     {
-      "id": 606,
+      "id": 928,
       "name": "Move cockpit view: up/down (ministick)",
       "group": "Cockpit View",
       "phrases": [
@@ -1989,7 +1995,7 @@
       "enabled": false
     },
     {
-      "id": 607,
+      "id": 929,
       "name": "Turret gunsight view: Look around, down/up",
       "group": "Cockpit View",
       "phrases": [
@@ -1999,7 +2005,7 @@
       "enabled": false
     },
     {
-      "id": 608,
+      "id": 930,
       "name": "Turret gunsight view: Look around, right/left",
       "group": "Cockpit View",
       "phrases": [
@@ -2009,7 +2015,7 @@
       "enabled": false
     },
     {
-      "id": 609,
+      "id": 931,
       "name": "Default view",
       "group": "Cockpit View",
       "phrases": [
@@ -2022,7 +2028,7 @@
       "enabled": true
     },
     {
-      "id": 610,
+      "id": 932,
       "name": "Camera: Cockpit view",
       "group": "Camera Management",
       "phrases": [
@@ -2032,7 +2038,7 @@
       "enabled": true
     },
     {
-      "id": 611,
+      "id": 933,
       "name": "Camera: Player external",
       "group": "Camera Management",
       "phrases": [
@@ -2042,7 +2048,7 @@
       "enabled": true
     },
     {
-      "id": 612,
+      "id": 934,
       "name": "Camera: Air - friendlies",
       "group": "Camera Management",
       "phrases": [
@@ -2052,7 +2058,7 @@
       "enabled": true
     },
     {
-      "id": 613,
+      "id": 935,
       "name": "Camera: Air - enemies",
       "group": "Camera Management",
       "phrases": [
@@ -2062,7 +2068,7 @@
       "enabled": true
     },
     {
-      "id": 614,
+      "id": 936,
       "name": "Camera: Air - nearest",
       "group": "Camera Management",
       "phrases": [
@@ -2072,7 +2078,7 @@
       "enabled": true
     },
     {
-      "id": 615,
+      "id": 937,
       "name": "Camera: Surface - all",
       "group": "Camera Management",
       "phrases": [
@@ -2082,7 +2088,7 @@
       "enabled": true
     },
     {
-      "id": 616,
+      "id": 938,
       "name": "Camera: Surface - friendlies",
       "group": "Camera Management",
       "phrases": [
@@ -2092,7 +2098,7 @@
       "enabled": true
     },
     {
-      "id": 617,
+      "id": 939,
       "name": "Camera: Surface - enemies",
       "group": "Camera Management",
       "phrases": [
@@ -2102,7 +2108,7 @@
       "enabled": true
     },
     {
-      "id": 618,
+      "id": 940,
       "name": "Camera: Surface - nearest",
       "group": "Camera Management",
       "phrases": [
@@ -2112,7 +2118,7 @@
       "enabled": true
     },
     {
-      "id": 619,
+      "id": 941,
       "name": "Camera: Bombs and Rockets",
       "group": "Camera Management",
       "phrases": [
@@ -2122,7 +2128,7 @@
       "enabled": true
     },
     {
-      "id": 620,
+      "id": 942,
       "name": "Camera: Bombs and Rockets - friendlies",
       "group": "Camera Management",
       "phrases": [
@@ -2132,7 +2138,7 @@
       "enabled": true
     },
     {
-      "id": 621,
+      "id": 943,
       "name": "Camera: Bombs and Rockets - enemies",
       "group": "Camera Management",
       "phrases": [
@@ -2142,7 +2148,7 @@
       "enabled": true
     },
     {
-      "id": 622,
+      "id": 944,
       "name": "Camera: Bombs and Rockets - nearest",
       "group": "Camera Management",
       "phrases": [
@@ -2152,7 +2158,7 @@
       "enabled": true
     },
     {
-      "id": 623,
+      "id": 945,
       "name": "Camera: Free",
       "group": "Camera Management",
       "phrases": [
@@ -2162,7 +2168,7 @@
       "enabled": true
     },
     {
-      "id": 624,
+      "id": 946,
       "name": "Camera: Pre-designed - friendly",
       "group": "Camera Management",
       "phrases": [
@@ -2172,7 +2178,7 @@
       "enabled": true
     },
     {
-      "id": 625,
+      "id": 947,
       "name": "Camera: Pre-designed - enemy",
       "group": "Camera Management",
       "phrases": [
@@ -2182,7 +2188,7 @@
       "enabled": true
     },
     {
-      "id": 626,
+      "id": 948,
       "name": "Camera selection: Extended set",
       "group": "Camera Management",
       "phrases": [
@@ -2192,7 +2198,7 @@
       "enabled": true
     },
     {
-      "id": 627,
+      "id": 949,
       "name": "Camera selection: External / Cockpit",
       "group": "Camera Management",
       "phrases": [
@@ -2202,7 +2208,7 @@
       "enabled": true
     },
     {
-      "id": 628,
+      "id": 950,
       "name": "Padlock: Air - friendlies",
       "group": "Camera Management",
       "phrases": [
@@ -2212,7 +2218,7 @@
       "enabled": true
     },
     {
-      "id": 629,
+      "id": 951,
       "name": "Padlock: Air - enemies",
       "group": "Camera Management",
       "phrases": [
@@ -2222,7 +2228,7 @@
       "enabled": true
     },
     {
-      "id": 630,
+      "id": 952,
       "name": "Padlock: Air - most danger",
       "group": "Camera Management",
       "phrases": [
@@ -2232,7 +2238,7 @@
       "enabled": true
     },
     {
-      "id": 631,
+      "id": 953,
       "name": "Padlock: Surface - friendlies",
       "group": "Camera Management",
       "phrases": [
@@ -2242,7 +2248,7 @@
       "enabled": true
     },
     {
-      "id": 632,
+      "id": 954,
       "name": "Padlock: Surface - enemies",
       "group": "Camera Management",
       "phrases": [
@@ -2252,7 +2258,7 @@
       "enabled": true
     },
     {
-      "id": 633,
+      "id": 955,
       "name": "Current object: Dynamic camera",
       "group": "Camera Management",
       "phrases": [
@@ -2262,7 +2268,7 @@
       "enabled": true
     },
     {
-      "id": 634,
+      "id": 956,
       "name": "Current object: Chase camera",
       "group": "Camera Management",
       "phrases": [
@@ -2272,7 +2278,7 @@
       "enabled": true
     },
     {
-      "id": 635,
+      "id": 957,
       "name": "Current object: Flyby dynamic camera",
       "group": "Camera Management",
       "phrases": [
@@ -2282,7 +2288,7 @@
       "enabled": true
     },
     {
-      "id": 636,
+      "id": 958,
       "name": "Current object: Flyby static camera",
       "group": "Camera Management",
       "phrases": [
@@ -2292,7 +2298,7 @@
       "enabled": true
     },
     {
-      "id": 637,
+      "id": 959,
       "name": "Current object: On-Board camera",
       "group": "Camera Management",
       "phrases": [
@@ -2302,7 +2308,7 @@
       "enabled": true
     },
     {
-      "id": 638,
+      "id": 960,
       "name": "Flight replay camera: AI Cameraman",
       "group": "Camera Management",
       "phrases": [
@@ -2312,7 +2318,7 @@
       "enabled": true
     },
     {
-      "id": 639,
+      "id": 961,
       "name": "Flight replay camera: By record",
       "group": "Camera Management",
       "phrases": [
@@ -2322,7 +2328,7 @@
       "enabled": true
     },
     {
-      "id": 640,
+      "id": 962,
       "name": "Flight replay camera: Player cockpit dynamic",
       "group": "Camera Management",
       "phrases": [
@@ -2332,7 +2338,7 @@
       "enabled": true
     },
     {
-      "id": 641,
+      "id": 963,
       "name": "External camera - Pitch: down/up",
       "group": "Camera Management",
       "phrases": [
@@ -2342,7 +2348,7 @@
       "enabled": true
     },
     {
-      "id": 642,
+      "id": 964,
       "name": "External camera - Turn: right/left",
       "group": "Camera Management",
       "phrases": [
@@ -2352,7 +2358,7 @@
       "enabled": true
     },
     {
-      "id": 643,
+      "id": 965,
       "name": "Bail Out / Exit",
       "group": "Pilot Actions",
       "phrases": [
@@ -2364,7 +2370,7 @@
       "enabled": true
     },
     {
-      "id": 644,
+      "id": 966,
       "name": "Pilot ejection",
       "group": "Pilot Actions",
       "phrases": [
@@ -2375,7 +2381,7 @@
       "enabled": true
     },
     {
-      "id": 645,
+      "id": 967,
       "name": "Cockpit canopy: drop",
       "group": "Pilot Actions",
       "phrases": [
@@ -2385,7 +2391,7 @@
       "enabled": true
     },
     {
-      "id": 646,
+      "id": 968,
       "name": "Walk forward",
       "group": "Pilot Actions",
       "phrases": [
@@ -2395,7 +2401,7 @@
       "enabled": true
     },
     {
-      "id": 647,
+      "id": 969,
       "name": "Walk backward",
       "group": "Pilot Actions",
       "phrases": [
@@ -2405,7 +2411,7 @@
       "enabled": true
     },
     {
-      "id": 648,
+      "id": 970,
       "name": "Turn right",
       "group": "Pilot Actions",
       "phrases": [
@@ -2415,7 +2421,7 @@
       "enabled": true
     },
     {
-      "id": 649,
+      "id": 971,
       "name": "Turn left",
       "group": "Pilot Actions",
       "phrases": [
@@ -2425,7 +2431,7 @@
       "enabled": true
     },
     {
-      "id": 650,
+      "id": 972,
       "name": "Run",
       "group": "Pilot Actions",
       "phrases": [
@@ -2435,7 +2441,7 @@
       "enabled": true
     },
     {
-      "id": 651,
+      "id": 973,
       "name": "Crouch",
       "group": "Pilot Actions",
       "phrases": [
@@ -2445,7 +2451,7 @@
       "enabled": true
     },
     {
-      "id": 652,
+      "id": 974,
       "name": "Gesture: Show respect",
       "group": "Pilot Actions",
       "phrases": [
@@ -2457,7 +2463,7 @@
       "enabled": true
     },
     {
-      "id": 653,
+      "id": 975,
       "name": "Gesture: Hand shake",
       "group": "Pilot Actions",
       "phrases": [
@@ -2469,7 +2475,7 @@
       "enabled": true
     },
     {
-      "id": 654,
+      "id": 976,
       "name": "Gesture: Thumb up",
       "group": "Pilot Actions",
       "phrases": [
@@ -2480,7 +2486,7 @@
       "enabled": true
     },
     {
-      "id": 655,
+      "id": 977,
       "name": "Gesture: Hand up",
       "group": "Pilot Actions",
       "phrases": [
@@ -2491,7 +2497,7 @@
       "enabled": true
     },
     {
-      "id": 656,
+      "id": 978,
       "name": "Gesture: Move on",
       "group": "Pilot Actions",
       "phrases": [
@@ -2502,7 +2508,7 @@
       "enabled": true
     },
     {
-      "id": 657,
+      "id": 979,
       "name": "Gesture: Go around",
       "group": "Pilot Actions",
       "phrases": [
@@ -2513,7 +2519,7 @@
       "enabled": true
     },
     {
-      "id": 658,
+      "id": 980,
       "name": "Gesture: Look ahead",
       "group": "Pilot Actions",
       "phrases": [
@@ -2524,7 +2530,7 @@
       "enabled": true
     },
     {
-      "id": 659,
+      "id": 981,
       "name": "Gesture: That is enough",
       "group": "Pilot Actions",
       "phrases": [
@@ -2535,7 +2541,7 @@
       "enabled": true
     },
     {
-      "id": 660,
+      "id": 982,
       "name": "Gesture: Cancel task",
       "group": "Pilot Actions",
       "phrases": [
@@ -2545,7 +2551,7 @@
       "enabled": true
     },
     {
-      "id": 661,
+      "id": 983,
       "name": "Screenshot",
       "group": "Service Commands",
       "phrases": [
@@ -2555,7 +2561,7 @@
       "enabled": true
     },
     {
-      "id": 662,
+      "id": 984,
       "name": "Game pause",
       "group": "Service Commands",
       "phrases": [
@@ -2565,7 +2571,7 @@
       "enabled": true
     },
     {
-      "id": 663,
+      "id": 985,
       "name": "Accelerate time in mission",
       "group": "Service Commands",
       "phrases": [
@@ -2577,7 +2583,7 @@
       "enabled": true
     },
     {
-      "id": 664,
+      "id": 986,
       "name": "Decelerate time in mission",
       "group": "Service Commands",
       "phrases": [
@@ -2589,7 +2595,7 @@
       "enabled": true
     },
     {
-      "id": 665,
+      "id": 987,
       "name": "Skip cut-scene",
       "group": "Service Commands",
       "phrases": [
@@ -2599,7 +2605,7 @@
       "enabled": true
     },
     {
-      "id": 666,
+      "id": 988,
       "name": "Flight recording",
       "group": "Service Commands",
       "phrases": [
@@ -2612,7 +2618,7 @@
       "enabled": true
     },
     {
-      "id": 667,
+      "id": 989,
       "name": "FPS counter",
       "group": "Service Commands",
       "phrases": [
@@ -2622,7 +2628,7 @@
       "enabled": true
     },
     {
-      "id": 668,
+      "id": 990,
       "name": "+IPD correction for fixed IPD HMDs (directly shifts the VR image)",
       "group": "Service Commands",
       "phrases": [
@@ -2632,7 +2638,7 @@
       "enabled": true
     },
     {
-      "id": 669,
+      "id": 991,
       "name": "-IPD correction for fixed IPD HMDs (directly shifts the VR image)",
       "group": "Service Commands",
       "phrases": [
@@ -2642,7 +2648,7 @@
       "enabled": true
     },
     {
-      "id": 670,
+      "id": 992,
       "name": "Additional MODIFIERS buttons (SHIFT's)",
       "group": "Service Commands",
       "phrases": [
@@ -2652,7 +2658,7 @@
       "enabled": false
     },
     {
-      "id": 671,
+      "id": 993,
       "name": "Engine: start sequence",
       "group": "Engine",
       "phrases": [
@@ -2662,7 +2668,7 @@
       "enabled": false
     },
     {
-      "id": 672,
+      "id": 994,
       "name": "Engine: stop sequence",
       "group": "Engine",
       "phrases": [
@@ -2672,7 +2678,7 @@
       "enabled": false
     },
     {
-      "id": 673,
+      "id": 995,
       "name": "Superchargers stage: higher",
       "group": "Engine",
       "phrases": [
@@ -2682,7 +2688,7 @@
       "enabled": false
     },
     {
-      "id": 674,
+      "id": 996,
       "name": "Superchargers stage: lower",
       "group": "Engine",
       "phrases": [
@@ -2692,7 +2698,7 @@
       "enabled": false
     },
     {
-      "id": 675,
+      "id": 997,
       "name": "Boost: on",
       "group": "Engine",
       "phrases": [
@@ -2702,7 +2708,7 @@
       "enabled": false
     },
     {
-      "id": 676,
+      "id": 998,
       "name": "Boost: off",
       "group": "Engine",
       "phrases": [
@@ -2712,7 +2718,7 @@
       "enabled": false
     },
     {
-      "id": 677,
+      "id": 999,
       "name": "Cowl shutters servo mode: auto",
       "group": "Engine",
       "phrases": [
@@ -2722,7 +2728,7 @@
       "enabled": false
     },
     {
-      "id": 678,
+      "id": 1000,
       "name": "Cowl shutters servo mode: manual",
       "group": "Engine",
       "phrases": [
@@ -2732,7 +2738,7 @@
       "enabled": false
     },
     {
-      "id": 679,
+      "id": 1001,
       "name": "Water radiator servo mode: auto",
       "group": "Engine",
       "phrases": [
@@ -2742,7 +2748,7 @@
       "enabled": false
     },
     {
-      "id": 680,
+      "id": 1002,
       "name": "Water radiator servo mode: manual",
       "group": "Engine",
       "phrases": [
@@ -2752,7 +2758,7 @@
       "enabled": false
     },
     {
-      "id": 681,
+      "id": 1003,
       "name": "Oil radiator servo mode: auto",
       "group": "Engine",
       "phrases": [
@@ -2762,7 +2768,7 @@
       "enabled": false
     },
     {
-      "id": 682,
+      "id": 1004,
       "name": "Oil radiator servo mode: manual",
       "group": "Engine",
       "phrases": [
@@ -2772,7 +2778,7 @@
       "enabled": false
     },
     {
-      "id": 683,
+      "id": 1005,
       "name": "Tail/Nose wheel steering: lock",
       "group": "Systems",
       "phrases": [
@@ -2782,7 +2788,7 @@
       "enabled": false
     },
     {
-      "id": 684,
+      "id": 1006,
       "name": "Tail/Nose wheel steering: unlock",
       "group": "Systems",
       "phrases": [
@@ -2792,7 +2798,7 @@
       "enabled": false
     },
     {
-      "id": 685,
+      "id": 1007,
       "name": "Parking brakes: on",
       "group": "Systems",
       "phrases": [
@@ -2802,7 +2808,7 @@
       "enabled": false
     },
     {
-      "id": 686,
+      "id": 1008,
       "name": "Parking brakes: off",
       "group": "Systems",
       "phrases": [
@@ -2812,7 +2818,7 @@
       "enabled": false
     },
     {
-      "id": 687,
+      "id": 1009,
       "name": "Cockpit light: mode next",
       "group": "Systems",
       "phrases": [
@@ -2822,7 +2828,7 @@
       "enabled": false
     },
     {
-      "id": 688,
+      "id": 1010,
       "name": "Cockpit light: mode prev",
       "group": "Systems",
       "phrases": [
@@ -2832,7 +2838,7 @@
       "enabled": false
     },
     {
-      "id": 689,
+      "id": 1011,
       "name": "Landing lights: on",
       "group": "Systems",
       "phrases": [
@@ -2842,7 +2848,7 @@
       "enabled": false
     },
     {
-      "id": 690,
+      "id": 1012,
       "name": "Landing lights: off",
       "group": "Systems",
       "phrases": [
@@ -2852,7 +2858,7 @@
       "enabled": false
     },
     {
-      "id": 691,
+      "id": 1013,
       "name": "Taxi lights: on",
       "group": "Systems",
       "phrases": [
@@ -2862,7 +2868,7 @@
       "enabled": false
     },
     {
-      "id": 692,
+      "id": 1014,
       "name": "Taxi lights: off",
       "group": "Systems",
       "phrases": [
@@ -2872,7 +2878,7 @@
       "enabled": false
     },
     {
-      "id": 693,
+      "id": 1015,
       "name": "Navigation lights: on",
       "group": "Systems",
       "phrases": [
@@ -2882,7 +2888,7 @@
       "enabled": false
     },
     {
-      "id": 694,
+      "id": 1016,
       "name": "Navigation lights: off",
       "group": "Systems",
       "phrases": [
@@ -2892,7 +2898,7 @@
       "enabled": false
     },
     {
-      "id": 695,
+      "id": 1017,
       "name": "Formation lights: on",
       "group": "Systems",
       "phrases": [
@@ -2902,7 +2908,7 @@
       "enabled": false
     },
     {
-      "id": 696,
+      "id": 1018,
       "name": "Formation lights: off",
       "group": "Systems",
       "phrases": [
@@ -2912,7 +2918,7 @@
       "enabled": false
     },
     {
-      "id": 697,
+      "id": 1019,
       "name": "Code lights: on",
       "group": "Systems",
       "phrases": [
@@ -2922,7 +2928,7 @@
       "enabled": false
     },
     {
-      "id": 698,
+      "id": 1020,
       "name": "Code lights: off",
       "group": "Systems",
       "phrases": [
@@ -2932,7 +2938,7 @@
       "enabled": false
     },
     {
-      "id": 699,
+      "id": 1021,
       "name": "Cockpit canopy: open",
       "group": "Systems",
       "phrases": [
@@ -2942,7 +2948,7 @@
       "enabled": false
     },
     {
-      "id": 700,
+      "id": 1022,
       "name": "Cockpit canopy: close",
       "group": "Systems",
       "phrases": [
@@ -2952,7 +2958,7 @@
       "enabled": false
     },
     {
-      "id": 701,
+      "id": 1023,
       "name": "Window: open",
       "group": "Systems",
       "phrases": [
@@ -2962,7 +2968,7 @@
       "enabled": false
     },
     {
-      "id": 702,
+      "id": 1024,
       "name": "Window: close",
       "group": "Systems",
       "phrases": [
@@ -2972,7 +2978,7 @@
       "enabled": false
     },
     {
-      "id": 703,
+      "id": 1025,
       "name": "Bombs selector: next",
       "group": "Weapons",
       "phrases": [
@@ -2982,7 +2988,7 @@
       "enabled": false
     },
     {
-      "id": 704,
+      "id": 1026,
       "name": "Bombs selector: prev",
       "group": "Weapons",
       "phrases": [
@@ -2992,7 +2998,7 @@
       "enabled": false
     },
     {
-      "id": 705,
+      "id": 1027,
       "name": "Rockets selector: next",
       "group": "Weapons",
       "phrases": [
@@ -3002,7 +3008,7 @@
       "enabled": false
     },
     {
-      "id": 706,
+      "id": 1028,
       "name": "Rockets selector: prev",
       "group": "Weapons",
       "phrases": [
@@ -3012,7 +3018,7 @@
       "enabled": false
     },
     {
-      "id": 707,
+      "id": 1029,
       "name": "Bomb bay: open",
       "group": "Weapons",
       "phrases": [
@@ -3022,7 +3028,7 @@
       "enabled": false
     },
     {
-      "id": 708,
+      "id": 1030,
       "name": "Bomb bay: close",
       "group": "Weapons",
       "phrases": [
@@ -3032,7 +3038,7 @@
       "enabled": false
     },
     {
-      "id": 709,
+      "id": 1031,
       "name": "Bomb fuses: on",
       "group": "Weapons",
       "phrases": [
@@ -3042,7 +3048,7 @@
       "enabled": false
     },
     {
-      "id": 710,
+      "id": 1032,
       "name": "Bomb fuses: off",
       "group": "Weapons",
       "phrases": [
@@ -3052,7 +3058,7 @@
       "enabled": false
     },
     {
-      "id": 711,
+      "id": 1033,
       "name": "Master arm: on",
       "group": "Weapons",
       "phrases": [
@@ -3062,7 +3068,7 @@
       "enabled": false
     },
     {
-      "id": 712,
+      "id": 1034,
       "name": "Master arm: off",
       "group": "Weapons",
       "phrases": [
@@ -3072,7 +3078,7 @@
       "enabled": false
     },
     {
-      "id": 713,
+      "id": 1035,
       "name": "Gunsight: Mode next",
       "group": "Weapons",
       "phrases": [
@@ -3082,7 +3088,7 @@
       "enabled": false
     },
     {
-      "id": 714,
+      "id": 1036,
       "name": "Gunsight: Mode prev",
       "group": "Weapons",
       "phrases": [
@@ -3092,7 +3098,7 @@
       "enabled": false
     },
     {
-      "id": 715,
+      "id": 1037,
       "name": "Gunsight: Position next",
       "group": "Weapons",
       "phrases": [
@@ -3102,7 +3108,7 @@
       "enabled": false
     },
     {
-      "id": 716,
+      "id": 1038,
       "name": "Gunsight: Position prev",
       "group": "Weapons",
       "phrases": [
@@ -3112,7 +3118,7 @@
       "enabled": false
     },
     {
-      "id": 717,
+      "id": 1039,
       "name": "Gunsight: Filter on",
       "group": "Weapons",
       "phrases": [
@@ -3122,7 +3128,7 @@
       "enabled": false
     },
     {
-      "id": 718,
+      "id": 1040,
       "name": "Gunsight: Filter off",
       "group": "Weapons",
       "phrases": [
@@ -3132,7 +3138,7 @@
       "enabled": false
     },
     {
-      "id": 719,
+      "id": 1041,
       "name": "Gunsight: Cage on (button push)",
       "group": "Weapons",
       "phrases": [
@@ -3142,7 +3148,7 @@
       "enabled": false
     },
     {
-      "id": 720,
+      "id": 1042,
       "name": "Gunsight: Cage off",
       "group": "Weapons",
       "phrases": [
@@ -3152,7 +3158,7 @@
       "enabled": false
     },
     {
-      "id": 721,
+      "id": 1043,
       "name": "RWR / TWS: Power on",
       "group": "Weapons",
       "phrases": [
@@ -3162,7 +3168,7 @@
       "enabled": false
     },
     {
-      "id": 722,
+      "id": 1044,
       "name": "RWR / TWS: Power off",
       "group": "Weapons",
       "phrases": [
@@ -3172,7 +3178,7 @@
       "enabled": false
     },
     {
-      "id": 723,
+      "id": 1045,
       "name": "Request landing",
       "group": "Radio",
       "phrases": [
@@ -3182,7 +3188,7 @@
       "enabled": true
     },
     {
-      "id": 724,
+      "id": 1046,
       "name": "One",
       "group": "Radio",
       "phrases": [
@@ -3192,7 +3198,7 @@
       "enabled": true
     },
     {
-      "id": 725,
+      "id": 1047,
       "name": "Two",
       "group": "Radio",
       "phrases": [
@@ -3202,7 +3208,7 @@
       "enabled": true
     },
     {
-      "id": 726,
+      "id": 1048,
       "name": "Three",
       "group": "Radio",
       "phrases": [
@@ -3212,7 +3218,7 @@
       "enabled": true
     },
     {
-      "id": 727,
+      "id": 1049,
       "name": "Four",
       "group": "Radio",
       "phrases": [
@@ -3222,7 +3228,7 @@
       "enabled": true
     },
     {
-      "id": 728,
+      "id": 1050,
       "name": "Five",
       "group": "Radio",
       "phrases": [
@@ -3232,7 +3238,7 @@
       "enabled": true
     },
     {
-      "id": 729,
+      "id": 1051,
       "name": "Six",
       "group": "Radio",
       "phrases": [
@@ -3242,7 +3248,7 @@
       "enabled": true
     },
     {
-      "id": 730,
+      "id": 1052,
       "name": "Seven",
       "group": "Radio",
       "phrases": [
@@ -3252,7 +3258,7 @@
       "enabled": true
     },
     {
-      "id": 731,
+      "id": 1053,
       "name": "Eight",
       "group": "Radio",
       "phrases": [
@@ -3262,7 +3268,7 @@
       "enabled": true
     },
     {
-      "id": 732,
+      "id": 1054,
       "name": "Nine",
       "group": "Radio",
       "phrases": [
@@ -3272,7 +3278,7 @@
       "enabled": true
     },
     {
-      "id": 733,
+      "id": 1055,
       "name": "Zero",
       "group": "Radio",
       "phrases": [
@@ -3284,7 +3290,7 @@
       "enabled": true
     },
     {
-      "id": 734,
+      "id": 1056,
       "name": "Request position",
       "group": "Radio",
       "phrases": [

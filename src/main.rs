@@ -18,6 +18,7 @@ mod match_cmd;
 mod phase;
 mod plan;
 mod presets;
+mod release;
 mod resample;
 mod sanitize;
 mod sticks;

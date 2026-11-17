@@ -1,6 +1,8 @@
 //! The desk. Operate is the thing you glance at in the sim. The other pages
 //! are how you set the keys and the microphone before you get in.
 
+use std::sync::atomic::Ordering;
+
 use egui::{Color32, CornerRadius, Layout, RichText, Stroke, TextStyle, Vec2};
 
 use crate::app::{CallsignApp, LogKind, Page};
@@ -8,6 +10,7 @@ use crate::config::{Command, Game, Gesture, Mode, SttEngine};
 use crate::cues::CueKind;
 use crate::keys;
 use crate::phase::{self, Phase};
+use crate::release::{self, ReleaseLook, VersionOrder};
 use crate::stt;
 use crate::theme;
 
@@ -319,6 +322,23 @@ fn status_column(app: &mut CallsignApp, ui: &mut egui::Ui) {
                 .size(13.0),
             );
         }
+        if let Ok(look) = app.release.lock() {
+            if let ReleaseLook::Ready {
+                published,
+                order: VersionOrder::Behind,
+            } = &*look
+            {
+                ui.add_space(6.0);
+                ui.label(
+                    RichText::new(format!(
+                        "A newer release, {}, is on GitHub. Setup has the link.",
+                        published.tag
+                    ))
+                    .color(theme::AMBER)
+                    .size(12.5),
+                );
+            }
+        }
     });
 }
 
@@ -496,6 +516,9 @@ fn commands_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
             }
             if ui.button("Add starter set").clicked() {
                 app.add_starter();
+            }
+            if app.config.game == Game::Korea && ui.button("Load built-in Korea list").clicked() {
+                app.load_builtin_korea();
             }
             let has_commands = !app.config.commands().is_empty();
             if ui
@@ -766,11 +789,11 @@ fn command_matches(command: &Command, query: &str) -> bool {
 
 fn command_intro(game: Game) -> String {
     let starter = match game {
-        Game::Gb => "A new list starts from the printed Great Battles defaults.",
-        Game::Korea => "A new list starts from the Korea starter. The command menu there is Tab. Korea-commands.json, shipped beside the release, is the full Korea keyboard. Browse to that file on this page and Import it.",
+        Game::Gb => "A new Great Battles list starts from the printed defaults. Weapons start off, and eject and the gun trigger are not in that list.",
+        Game::Korea => "A new Korea list is the built-in file callsign-commands-korea.json. The command menu there is Tab. It includes stores, flares, and bailout. Key output still starts off, so nothing is typed until you turn it on.",
     };
     format!(
-        "A phrase matches when its words show up in order. Short words have to be exact. This list is saved for {} only. {} keeps its own commands. {starter} Open Controls in the sim and check the keys before you turn key output on. Weapons start off: a misheard word should not drop ordnance. Eject and the gun trigger are not in this list.",
+        "A phrase matches when its words show up in order. Short words have to be exact. This list is saved for {} only. {} keeps its own commands. {starter} Open Controls in the sim and check the keys before you turn key output on.",
         game.label(),
         game.other().label()
     )
@@ -778,6 +801,8 @@ fn command_intro(game: Game) -> String {
 
 fn setup_page(app: &mut CallsignApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().show(ui, |ui| {
+        version_section(app, ui);
+        ui.add_space(18.0);
         section(ui, "Game");
         ui.label(
             RichText::new(
@@ -1268,6 +1293,62 @@ fn labeled_mono(ui: &mut egui::Ui, label: &str, text: &mut String) {
             .desired_width(f32::INFINITY)
             .font(TextStyle::Monospace),
     );
+}
+
+fn version_section(app: &mut CallsignApp, ui: &mut egui::Ui) {
+    section(ui, "Version");
+    let look = app
+        .release
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone();
+    match look {
+        ReleaseLook::Checking => {
+            ui.label(
+                RichText::new(format!(
+                    "This copy is {}. Checking the latest GitHub release.",
+                    release::VERSION
+                ))
+                .color(theme::MUTED),
+            );
+        }
+        ReleaseLook::Ready { published, order } => {
+            let line = match order {
+                VersionOrder::Same => format!(
+                    "This copy is {}, the same as the latest GitHub release.",
+                    release::VERSION
+                ),
+                VersionOrder::Behind => format!(
+                    "This copy is {}. The latest GitHub release is {}.",
+                    release::VERSION,
+                    published.tag
+                ),
+                VersionOrder::Ahead => format!(
+                    "This copy is {}. The latest GitHub release is still {}.",
+                    release::VERSION,
+                    published.tag
+                ),
+            };
+            ui.label(RichText::new(line).color(theme::TEXT));
+            if !published.page.is_empty() {
+                ui.hyperlink_to("Open the release on GitHub", published.page);
+            }
+        }
+        ReleaseLook::Failed(err) => {
+            ui.label(
+                RichText::new(format!("This copy is {}. {err}", release::VERSION))
+                    .color(theme::AMBER),
+            );
+        }
+    }
+    ui.add_space(6.0);
+    let busy = app.release_busy.load(Ordering::SeqCst);
+    if ui
+        .add_enabled(!busy, egui::Button::new("Check again"))
+        .clicked()
+    {
+        app.check_release();
+    }
 }
 
 fn section(ui: &mut egui::Ui, title: &str) {

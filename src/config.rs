@@ -248,7 +248,10 @@ pub struct GameProfile {
 
 impl GameProfile {
     pub fn fresh(game: Game) -> Self {
-        let commands = starter_commands(game);
+        let commands = match game {
+            Game::Korea => korea_builtin_commands(),
+            Game::Gb => starter_commands(game),
+        };
         let next_id = commands.iter().map(|command| command.id).max().unwrap_or(0) + 1;
         Self {
             focus_title: default_focus_title(),
@@ -267,6 +270,10 @@ impl Default for GameProfile {
 
 fn default_version() -> u32 {
     2
+}
+
+fn current_version() -> u32 {
+    3
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -368,7 +375,7 @@ fn default_mixed_extra() -> usize {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            version: default_version(),
+            version: current_version(),
             game: Game::Korea,
             korea: GameProfile::fresh(Game::Korea),
             gb: GameProfile::fresh(Game::Gb),
@@ -650,6 +657,25 @@ fn parse_value(
         mixed_max_extra: raw.mixed_max_extra,
     };
     config.normalize();
+    if config.version < current_version() {
+        let (added, replaced) = merge_commands(
+            &mut config.korea.commands,
+            &mut config.korea.next_id,
+            korea_builtin_commands(),
+        );
+        config.version = current_version();
+        let line = if added == 0 {
+            "The built-in Korea command list is already in that profile.".to_string()
+        } else {
+            format!(
+                "Added {added} built-in Korea commands. {replaced} names that were already there had their keys updated."
+            )
+        };
+        migrated = Some(match migrated {
+            Some(prev) => format!("{prev} {line}"),
+            None => line,
+        });
+    }
     Ok((config, migrated))
 }
 
@@ -836,6 +862,41 @@ fn parse_command_list(text: &str) -> Result<ImportedCommands, String> {
         }),
         None => Err(decode_commands_error(&repaired)),
     }
+}
+
+pub fn korea_builtin_commands() -> Vec<Command> {
+    let text = include_str!("../commands/callsign-commands-korea.json");
+    decode_commands(text).expect("callsign-commands-korea.json is not a command list")
+}
+
+/// Match incoming commands by name. A new name is appended. An existing name
+/// keeps its id and takes the incoming phrases, keys, and enabled flag.
+pub fn merge_commands(
+    commands: &mut Vec<Command>,
+    next_id: &mut u64,
+    incoming: Vec<Command>,
+) -> (usize, usize) {
+    let mut added = 0;
+    let mut replaced = 0;
+    for command in incoming {
+        if let Some(existing) = commands
+            .iter_mut()
+            .find(|current| current.name == command.name)
+        {
+            existing.group = command.group;
+            existing.phrases = command.phrases;
+            existing.sequence = command.sequence;
+            existing.enabled = command.enabled;
+            replaced += 1;
+        } else {
+            let mut command = command;
+            command.id = *next_id;
+            *next_id += 1;
+            commands.push(command);
+            added += 1;
+        }
+    }
+    (added, replaced)
 }
 
 fn decode_commands(text: &str) -> Option<Vec<Command>> {
@@ -1124,10 +1185,11 @@ mod tests {
     #[test]
     fn korea_command_file_imports_and_its_keys_parse() {
         let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("commands/Korea-commands.json");
+            .join("commands/callsign-commands-korea.json");
         let imported = import_commands(&path).expect("Korea command file");
         assert!(!imported.repaired);
         assert_eq!(imported.commands.len(), 321);
+        assert_eq!(korea_builtin_commands().len(), 321);
         for command in &imported.commands {
             if command.sequence.trim().is_empty() {
                 continue;
@@ -1162,10 +1224,46 @@ mod tests {
     fn starters_keep_a_different_command_menu_for_each_game() {
         let config = Config::default();
         assert_eq!(config.game, Game::Korea);
-        assert_eq!(sequence(config.commands(), "Command menu"), "tab");
+        assert_eq!(config.version, 3);
+        assert_eq!(sequence(config.commands(), "Commander's menu"), "tab");
+        assert_eq!(
+            sequence(config.commands(), "Landing gear: extend/retract"),
+            "g"
+        );
+        assert!(config.commands().len() > 200);
         assert_eq!(sequence(&config.gb.commands, "Command menu"), "grave");
-        assert_eq!(sequence(config.commands(), "Landing gear"), "g");
         assert_eq!(sequence(&config.gb.commands, "Landing gear"), "g");
+        assert!(config.gb.commands.len() < 40);
+    }
+
+    #[test]
+    fn an_older_korea_profile_gains_the_builtin_list_once() {
+        let older = r#"{
+            "version": 2,
+            "game": "korea",
+            "korea": {
+                "focus_title": "IL-2",
+                "commands": [{"id": 1, "name": "Mine", "group": "Custom", "phrases": ["mine"], "sequence": "z", "enabled": true}],
+                "next_id": 2
+            }
+        }"#;
+        let (config, note) = parse_config(older, None).unwrap();
+        assert_eq!(config.version, 3);
+        assert!(config
+            .korea
+            .commands
+            .iter()
+            .any(|command| command.name == "Mine" && command.sequence == "z"));
+        assert!(config
+            .korea
+            .commands
+            .iter()
+            .any(|command| command.name == "ESC menu"));
+        assert!(note.unwrap().contains("built-in Korea"));
+        let saved = serde_json::to_string_pretty(&config).unwrap();
+        let (again, second) = parse_config(&saved, None).unwrap();
+        assert!(second.is_none());
+        assert_eq!(again.korea.commands.len(), config.korea.commands.len());
     }
 
     #[test]
@@ -1213,8 +1311,15 @@ mod tests {
         assert!(korea.send_keys);
         assert_eq!(korea.focus_title(), "My IL-2");
         assert_eq!(korea.chat().active().unwrap().name, "Squad");
-        assert_eq!(korea.commands().len(), 1);
-        assert_eq!(korea.commands()[0].name, "Gear");
+        assert!(korea
+            .commands()
+            .iter()
+            .any(|command| command.name == "Gear" && command.sequence == "g"));
+        assert!(korea
+            .commands()
+            .iter()
+            .any(|command| command.name == "ESC menu"));
+        assert_eq!(korea.version, 3);
         assert_eq!(sequence(&korea.gb.commands, "Command menu"), "grave");
         assert!(note.unwrap().contains("IL-2 Series: Korea"));
 
@@ -1223,12 +1328,12 @@ mod tests {
         assert_eq!(gb.commands().len(), 1);
         assert_eq!(gb.commands()[0].name, "Gear");
         assert_eq!(gb.focus_title(), "My IL-2");
-        assert_eq!(sequence(&gb.korea.commands, "Command menu"), "tab");
+        assert_eq!(sequence(&gb.korea.commands, "Commander's menu"), "tab");
         assert!(gb
             .korea
             .commands
             .iter()
-            .any(|command| command.name == "Landing gear"));
+            .any(|command| command.name == "Landing gear: extend/retract"));
     }
 
     #[test]

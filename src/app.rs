@@ -3,9 +3,9 @@
 use std::collections::{HashSet, VecDeque};
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -19,6 +19,7 @@ use crate::keys;
 use crate::phase::{self, Effect, Phase};
 use crate::plan::{self, PlanInput};
 use crate::presets::merge_starter;
+use crate::release::{self, ReleaseLook};
 use crate::resample;
 use crate::sticks::StickHub;
 use crate::stt::{self, SttCommand};
@@ -116,6 +117,8 @@ pub struct CallsignApp {
     last_edit: Instant,
     paint_while_hidden: bool,
     titled_game: Option<Game>,
+    pub(crate) release: Arc<Mutex<ReleaseLook>>,
+    pub(crate) release_busy: Arc<AtomicBool>,
     event_tx: Sender<WorkerEvent>,
     event_rx: Receiver<WorkerEvent>,
     stt_tx: Sender<SttCommand>,
@@ -196,6 +199,8 @@ impl CallsignApp {
             last_edit: Instant::now(),
             paint_while_hidden: false,
             titled_game: None,
+            release: Arc::new(Mutex::new(ReleaseLook::Checking)),
+            release_busy: Arc::new(AtomicBool::new(false)),
             event_tx,
             event_rx,
             stt_tx,
@@ -231,6 +236,7 @@ impl CallsignApp {
                 "The local speech model isn't downloaded yet. Typed lines still work.".into(),
             );
         }
+        app.check_release();
         app
     }
 
@@ -428,33 +434,20 @@ impl CallsignApp {
         }
         match config::import_commands(std::path::Path::new(&path)) {
             Ok(incoming) => {
-                let mut replaced = 0;
-                let mut added = 0;
                 let mut unreadable = Vec::new();
-                for command in incoming.commands {
+                for command in &incoming.commands {
                     if !command.sequence.trim().is_empty()
                         && keys::parse_sequence(&command.sequence).is_err()
                     {
                         unreadable.push(command.name.clone());
                     }
-                    if let Some(existing) = self
-                        .config
-                        .commands_mut()
-                        .iter_mut()
-                        .find(|current| current.name == command.name)
-                    {
-                        existing.group = command.group;
-                        existing.phrases = command.phrases;
-                        existing.sequence = command.sequence;
-                        existing.enabled = command.enabled;
-                        replaced += 1;
-                    } else {
-                        let mut command = command;
-                        command.id = self.config.alloc_id();
-                        self.config.commands_mut().push(command);
-                        added += 1;
-                    }
                 }
+                let profile = self.config.active_mut();
+                let (added, replaced) = config::merge_commands(
+                    &mut profile.commands,
+                    &mut profile.next_id,
+                    incoming.commands,
+                );
                 let mut message = format!("Imported {added} new commands and updated {replaced}.");
                 if incoming.repaired {
                     message.push_str(" A few commas in the file were repaired while reading it.");
@@ -477,6 +470,54 @@ impl CallsignApp {
                 self.push_log(LogKind::Problem, err);
             }
         }
+    }
+
+    pub(crate) fn load_builtin_korea(&mut self) {
+        if self.config.game != Game::Korea {
+            return;
+        }
+        let incoming = config::korea_builtin_commands();
+        let profile = self.config.active_mut();
+        let (added, replaced) =
+            config::merge_commands(&mut profile.commands, &mut profile.next_id, incoming);
+        let message = format!(
+            "Loaded the built-in Korea list. {added} commands were new and {replaced} names were updated."
+        );
+        self.import_note = message.clone();
+        self.push_log(LogKind::System, message);
+    }
+
+    pub(crate) fn check_release(&self) {
+        if self
+            .release_busy
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return;
+        }
+        {
+            let mut look = self
+                .release
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            *look = ReleaseLook::Checking;
+        }
+        let slot = Arc::clone(&self.release);
+        let busy = Arc::clone(&self.release_busy);
+        thread::spawn(move || {
+            let next = match release::fetch_latest_release() {
+                Ok(published) => {
+                    match release::compare_versions(release::VERSION, &published.tag) {
+                        Ok(order) => ReleaseLook::Ready { published, order },
+                        Err(err) => ReleaseLook::Failed(err),
+                    }
+                }
+                Err(err) => ReleaseLook::Failed(err),
+            };
+            let mut look = slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            *look = next;
+            busy.store(false, Ordering::SeqCst);
+        });
     }
 
     pub(crate) fn refresh_mics(&mut self) {
